@@ -1,0 +1,270 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+ enum CbtQuestionType {
+   MCQ_SINGLE
+ }
+
+ enum CbtAttemptStatus {
+   IN_PROGRESS
+   SUBMITTED
+ }
+
+model School {
+  id        String   @id @default(cuid())
+  name      String
+  users     User[]
+  sessions  AcademicSession[] @relation("SchoolSessions")
+  activeSessionId String? @unique
+  activeSession   AcademicSession? @relation("ActiveSession", fields: [activeSessionId], references: [id])
+  activeTermId    String? @unique
+  activeTerm      Term? @relation("ActiveTerm", fields: [activeTermId], references: [id])
+  classes   Class[]
+  subjects  Subject[]
+  students  Student[]
+  parents   Parent[]
+  cbtQuestions CbtQuestion[]
+  cbtExams     CbtExam[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model User {
+  id           String     @id @default(cuid())
+  email        String     @unique
+  passwordHash String
+  schoolId     String?
+  school       School?    @relation(fields: [schoolId], references: [id])
+  roles        UserRole[]
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+}
+
+model Role {
+  id        String     @id @default(cuid())
+  name      String     @unique
+  users     UserRole[]
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+}
+
+model UserRole {
+  userId String
+  roleId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role   Role   @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@id([userId, roleId])
+}
+
+ model AcademicSession {
+   id        String   @id @default(cuid())
+   schoolId  String
+   name      String
+   isActive  Boolean  @default(false)
+   terms     Term[]
+   enrollments Enrollment[]
+   cbtExams   CbtExam[]
+   school    School   @relation("SchoolSessions", fields: [schoolId], references: [id], onDelete: Cascade)
+   activeForSchool School? @relation("ActiveSession")
+   createdAt DateTime @default(now())
+   updatedAt DateTime @updatedAt
+
+   @@unique([schoolId, name])
+ }
+
+ model Term {
+   id        String   @id @default(cuid())
+   sessionId String
+   name      String
+   startsAt  DateTime?
+   endsAt    DateTime?
+   session   AcademicSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+   enrollments Enrollment[]
+   cbtExams   CbtExam[]
+   activeForSchool School? @relation("ActiveTerm")
+   createdAt DateTime @default(now())
+   updatedAt DateTime @updatedAt
+
+   @@unique([sessionId, name])
+ }
+
+ model Class {
+   id        String   @id @default(cuid())
+   schoolId  String
+   name      String
+   enrollments Enrollment[]
+   cbtExams   CbtExam[]
+   school    School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+   createdAt DateTime @default(now())
+   updatedAt DateTime @updatedAt
+
+   @@unique([schoolId, name])
+ }
+
+ model Subject {
+   id        String   @id @default(cuid())
+   schoolId  String
+   name      String
+   code      String?
+   cbtQuestions CbtQuestion[]
+   cbtExams     CbtExam[]
+   school    School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+   createdAt DateTime @default(now())
+   updatedAt DateTime @updatedAt
+
+   @@unique([schoolId, name])
+ }
+
+ model Student {
+   id        String   @id @default(cuid())
+   schoolId  String
+   firstName String
+   lastName  String
+   studentNo String?
+   enrollments Enrollment[]
+   parents   ParentStudentLink[]
+   cbtAttempts CbtAttempt[]
+   school    School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+   createdAt DateTime @default(now())
+   updatedAt DateTime @updatedAt
+
+   @@unique([schoolId, studentNo])
+ }
+
+ model Parent {
+   id        String   @id @default(cuid())
+   schoolId  String
+   fullName  String
+   phone     String?
+   email     String?
+   students  ParentStudentLink[]
+   school    School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+   createdAt DateTime @default(now())
+   updatedAt DateTime @updatedAt
+ }
+
+ model ParentStudentLink {
+   parentId String
+   studentId String
+   relationship String?
+   parent  Parent  @relation(fields: [parentId], references: [id], onDelete: Cascade)
+   student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+   @@id([parentId, studentId])
+ }
+
+ model Enrollment {
+   id        String   @id @default(cuid())
+   studentId String
+   classId   String
+   sessionId String
+   termId    String?
+   student   Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+   class     Class    @relation(fields: [classId], references: [id], onDelete: Cascade)
+   session   AcademicSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+   term      Term?    @relation(fields: [termId], references: [id], onDelete: SetNull)
+   createdAt DateTime @default(now())
+   updatedAt DateTime @updatedAt
+
+   @@unique([studentId, classId, sessionId, termId])
+}
+
+ model CbtQuestion {
+   id        String   @id @default(cuid())
+   schoolId  String
+   subjectId String?
+   type      CbtQuestionType @default(MCQ_SINGLE)
+   text      String
+   options   CbtQuestionOption[]
+   exams     CbtExamQuestion[]
+   attemptAnswers CbtAttemptAnswer[]
+   school    School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+   subject   Subject? @relation(fields: [subjectId], references: [id], onDelete: SetNull)
+   createdAt DateTime @default(now())
+   updatedAt DateTime @updatedAt
+ }
+
+ model CbtQuestionOption {
+   id         String   @id @default(cuid())
+   questionId String
+   text       String
+   isCorrect  Boolean  @default(false)
+   question   CbtQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+   answers    CbtAttemptAnswer[]
+   createdAt  DateTime @default(now())
+   updatedAt  DateTime @updatedAt
+ }
+
+ model CbtExam {
+   id              String   @id @default(cuid())
+   schoolId        String
+   name            String
+   classId         String
+   subjectId       String?
+   sessionId       String?
+   termId          String?
+   durationMinutes Int
+   startsAt        DateTime?
+   endsAt          DateTime?
+   questions       CbtExamQuestion[]
+   attempts        CbtAttempt[]
+   school          School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+   class           Class    @relation(fields: [classId], references: [id], onDelete: Cascade)
+   subject         Subject? @relation(fields: [subjectId], references: [id], onDelete: SetNull)
+   session         AcademicSession? @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+   term            Term?    @relation(fields: [termId], references: [id], onDelete: SetNull)
+   createdAt       DateTime @default(now())
+   updatedAt       DateTime @updatedAt
+
+   @@unique([schoolId, name])
+ }
+
+ model CbtExamQuestion {
+   id         String   @id @default(cuid())
+   examId     String
+   questionId String
+   order      Int?
+   exam       CbtExam     @relation(fields: [examId], references: [id], onDelete: Cascade)
+   question   CbtQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+   createdAt  DateTime @default(now())
+   updatedAt  DateTime @updatedAt
+
+   @@unique([examId, questionId])
+ }
+
+ model CbtAttempt {
+   id          String   @id @default(cuid())
+   examId      String
+   studentId   String
+   status      CbtAttemptStatus @default(IN_PROGRESS)
+   startedAt   DateTime @default(now())
+   submittedAt DateTime?
+   answers     CbtAttemptAnswer[]
+   exam        CbtExam  @relation(fields: [examId], references: [id], onDelete: Cascade)
+   student     Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+   createdAt   DateTime @default(now())
+   updatedAt   DateTime @updatedAt
+
+   @@unique([examId, studentId])
+ }
+
+ model CbtAttemptAnswer {
+   id              String   @id @default(cuid())
+   attemptId       String
+   questionId      String
+   selectedOptionId String?
+   attempt         CbtAttempt @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+   question        CbtQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+   selectedOption  CbtQuestionOption? @relation(fields: [selectedOptionId], references: [id], onDelete: SetNull)
+   createdAt       DateTime @default(now())
+   updatedAt       DateTime @updatedAt
+
+   @@unique([attemptId, questionId])
+ }
