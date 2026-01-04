@@ -1,7 +1,11 @@
 import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
 
-export async function GET() {
-  const res = await fetch('http://localhost:4000/health', { cache: 'no-store' });
+export const runtime = 'nodejs';
+
+export async function GET(req: NextRequest) {
+  const origin = req.nextUrl.origin;
+  const res = await fetch(`${origin}/api/health`, { cache: 'no-store' });
   const json = await res.json();
   return NextResponse.json(json);
 }

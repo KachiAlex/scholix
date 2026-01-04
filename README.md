@@ -1,6 +1,6 @@
-# School Management Solution (SMS)
+# Scholix
 
-This repository contains the implementation for a secondary school **School Management Solution (SMS)** covering:
+This repository contains the implementation for **Scholix**, a secondary school management solution covering:
 
 - Secure **Computer-Based Testing (CBT)**
 - **Configurable result computation** + transcripts
@@ -14,6 +14,7 @@ This repository contains the implementation for a secondary school **School Mana
   - PostgreSQL (via Docker)
 - `apps/web`:
   - Next.js web app (portal UI)
+  - Next.js Route Handlers for `/api/*` (Vercel-compatible backend)
 
 ## Prerequisites
 

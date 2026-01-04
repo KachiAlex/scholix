@@ -1,8 +1,8 @@
 import type { ReactNode } from 'react';
 
 export const metadata = {
-  title: 'SMS Portal',
-  description: 'School Management Solution',
+  title: 'Scholix',
+  description: 'Scholix - School Management Solution',
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {

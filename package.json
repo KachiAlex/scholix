@@ -1,5 +1,5 @@
 {
-  "name": "sms-platform",
+  "name": "scholix-platform",
   "private": true,
   "workspaces": [
     "apps/*"
@@ -8,8 +8,8 @@
     "concurrently": "^9.0.0"
   },
   "scripts": {
-    "dev": "concurrently -n web,api -c cyan,magenta \"npm run dev -w @sms/web\" \"npm run start:dev -w @sms/api\"",
-    "dev:web": "npm run dev -w @sms/web",
+    "dev": "concurrently -n web,api -c cyan,magenta \"npm run dev -w @scholix/web\" \"npm run start:dev -w @sms/api\"",
+    "dev:web": "npm run dev -w @scholix/web",
     "dev:api": "npm run start:dev -w @sms/api",
     "prisma:generate": "npm run prisma:generate -w @sms/api",
     "prisma:migrate": "npm run prisma:migrate -w @sms/api"
