@@ -7,6 +7,11 @@ import { mapErrorToResponse } from '@/lib/http';
 
 export const runtime = 'nodejs';
 
+type QuestionOptionInput = {
+  text: string;
+  isCorrect: boolean;
+};
+
 export async function POST(req: NextRequest) {
   try {
     const { userId } = requireUser(req);
@@ -20,14 +25,14 @@ export async function POST(req: NextRequest) {
     const optionsIn = Array.isArray(body?.options) ? body.options : null;
     if (!optionsIn || optionsIn.length < 2) throw new Error('BAD_REQUEST: options must have at least 2 items');
 
-    const options = optionsIn.map((o: any) => ({
+    const options: QuestionOptionInput[] = optionsIn.map((o: any) => ({
       text: typeof o?.text === 'string' ? o.text.trim() : '',
       isCorrect: Boolean(o?.isCorrect),
     }));
 
-    if (options.some((o) => !o.text)) throw new Error('BAD_REQUEST: option text is required');
+    if (options.some((o: QuestionOptionInput) => !o.text)) throw new Error('BAD_REQUEST: option text is required');
 
-    const correctCount = options.filter((o) => o.isCorrect).length;
+    const correctCount = options.filter((o: QuestionOptionInput) => o.isCorrect).length;
     if (correctCount !== 1) throw new Error('BAD_REQUEST: exactly 1 option must be marked correct');
 
     if (subjectId) {
