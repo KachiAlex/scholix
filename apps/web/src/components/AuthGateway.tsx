@@ -1017,7 +1017,7 @@ function parseJsonObject<T extends Record<string, unknown>>(value: string, label
   let parsed: unknown;
   try {
     parsed = JSON.parse(value);
-  } catch (err) {
+  } catch {
     throw new Error(`Invalid ${label} JSON`);
   }
 
