@@ -27,17 +27,20 @@ export async function POST(req: NextRequest) {
 
     const user = await prisma.$transaction(async (tx) => {
       let schoolId: string | null = null;
+      let createdSchoolId: string | null = null;
 
       if (typeof schoolName === 'string' && schoolName.trim().length > 0) {
         const school = await tx.school.create({ data: { name: schoolName.trim() } });
         schoolId = school.id;
+        createdSchoolId = school.id;
       }
 
       const createdUser = await tx.user.create({
         data: {
           email,
           passwordHash,
-          schoolId: schoolId ?? undefined,
+          primarySchoolId: schoolId ?? undefined,
+          activeSchoolId: schoolId ?? undefined,
         },
       });
 
@@ -53,6 +56,16 @@ export async function POST(req: NextRequest) {
           roleId: role.id,
         },
       });
+
+      if (createdSchoolId) {
+        await tx.userSchoolMembership.create({
+          data: {
+            userId: createdUser.id,
+            schoolId: createdSchoolId,
+            role: 'ADMIN',
+          },
+        });
+      }
 
       return createdUser;
     });
