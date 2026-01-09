@@ -14,3 +14,5 @@ coverage
 **/prisma/migrations/migration_lock.toml
 **/prisma/migrations/**/migration_lock.toml
 **/node_modules/.prisma
+.vercel
+.env*.local

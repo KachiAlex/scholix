@@ -17,6 +17,7 @@
     "paths": {
       "@/*": ["src/*"]
     },
+    "types": ["node"],
     "resolveJsonModule": true,
     "isolatedModules": true,
     "jsx": "preserve",
