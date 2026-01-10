@@ -1,9 +1,11 @@
 import { BadRequestException, Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import { TenantRole } from '@prisma/client';
+import * as bcrypt from 'bcryptjs';
 import { PrismaService } from '../prisma/prisma.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
-import * as bcrypt from 'bcryptjs';
+import { SystemRole } from './roles.constants';
 
 @Injectable()
 export class AuthService {
@@ -24,24 +26,25 @@ export class AuthService {
     const passwordHash = await bcrypt.hash(dto.password, 12);
 
     const user = await this.prisma.$transaction(async (tx) => {
-      let schoolId: string | null = null;
+      let tenantId: string | null = null;
 
       if (dto.schoolName && dto.schoolName.trim().length > 0) {
-        const school = await tx.school.create({ data: { name: dto.schoolName.trim() } });
-        schoolId = school.id;
+        const tenant = await tx.school.create({ data: { name: dto.schoolName.trim() } });
+        tenantId = tenant.id;
       }
 
       const createdUser = await tx.user.create({
         data: {
           email,
           passwordHash,
-          schoolId: schoolId ?? undefined,
+          primarySchoolId: tenantId ?? undefined,
+          activeSchoolId: tenantId ?? undefined,
         },
       });
 
       const role = await tx.role.upsert({
-        where: { name: 'ADMIN' },
-        create: { name: 'ADMIN' },
+        where: { name: SystemRole.ADMIN },
+        create: { name: SystemRole.ADMIN },
         update: {},
       });
 
@@ -51,6 +54,16 @@ export class AuthService {
           roleId: role.id,
         },
       });
+
+      if (tenantId) {
+        await tx.userSchoolMembership.create({
+          data: {
+            userId: createdUser.id,
+            schoolId: tenantId,
+            role: TenantRole.OWNER,
+          },
+        });
+      }
 
       return createdUser;
     });

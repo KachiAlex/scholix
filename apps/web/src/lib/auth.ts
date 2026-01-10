@@ -28,3 +28,9 @@ export function requireUser(req: NextRequest): { userId: string; email: string; 
     roles: decoded.roles ?? [],
   };
 }
+
+export function requireSuperadmin(req: NextRequest): { userId: string; email: string; roles: string[] } {
+  const user = requireUser(req);
+  if (!user.roles.includes('SUPERADMIN')) throw new Error('FORBIDDEN');
+  return user;
+}
