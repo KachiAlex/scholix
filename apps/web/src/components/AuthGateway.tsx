@@ -653,7 +653,7 @@ function PlatformTenantPanel({ token }: { token: string }) {
                     <p className="text-muted" style={{ margin: 0 }}>
                       Licensed seats
                     </p>
-                    <p style={{ margin: 0, fontWeight: 600 }}>{tenant.licenseSeats.toLocaleString()}</p>
+                    <p style={{ margin: 0, fontWeight: 600 }}>{(tenant.licenseSeats ?? 0).toLocaleString()}</p>
                   </div>
                   <div>
                     <p className="text-muted" style={{ margin: 0 }}>

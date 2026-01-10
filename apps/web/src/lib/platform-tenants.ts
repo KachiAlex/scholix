@@ -19,6 +19,31 @@ export type PlatformTenantSummary = {
   _count: CountSummary;
 };
 
+function normalizeCountSummary(value: unknown): CountSummary {
+  const maybe = value as Partial<CountSummary> | null;
+  return {
+    memberships: typeof maybe?.memberships === 'number' ? maybe.memberships : 0,
+    students: typeof maybe?.students === 'number' ? maybe.students : 0,
+    classes: typeof maybe?.classes === 'number' ? maybe.classes : 0,
+    subjects: typeof maybe?.subjects === 'number' ? maybe.subjects : 0,
+  };
+}
+
+function normalizeTenant(raw: unknown): PlatformTenantSummary {
+  const tenant = raw as Partial<PlatformTenantSummary> | null;
+  return {
+    id: typeof tenant?.id === 'string' ? tenant.id : '',
+    name: typeof tenant?.name === 'string' ? tenant.name : '',
+    licenseSeats: typeof tenant?.licenseSeats === 'number' ? tenant.licenseSeats : 100,
+    licenseExpiresAt: typeof tenant?.licenseExpiresAt === 'string' ? tenant.licenseExpiresAt : null,
+    licenseNotes: typeof tenant?.licenseNotes === 'string' ? tenant.licenseNotes : null,
+    isSuspended: typeof tenant?.isSuspended === 'boolean' ? tenant.isSuspended : false,
+    createdAt: typeof tenant?.createdAt === 'string' ? tenant.createdAt : new Date(0).toISOString(),
+    updatedAt: typeof tenant?.updatedAt === 'string' ? tenant.updatedAt : new Date(0).toISOString(),
+    _count: normalizeCountSummary((tenant as any)?._count),
+  };
+}
+
 export type UpdatePlatformTenantPayload = Partial<{
   name: string;
   licenseSeats: number;
@@ -47,7 +72,8 @@ export async function fetchPlatformTenants(token: string): Promise<PlatformTenan
     headers: buildAuthHeaders(token),
     cache: 'no-store',
   });
-  return handleResponse<PlatformTenantSummary[]>(res);
+  const data = await handleResponse<unknown>(res);
+  return Array.isArray(data) ? data.map(normalizeTenant) : [];
 }
 
 export async function createPlatformTenant(token: string, name: string): Promise<PlatformTenantSummary> {
@@ -60,7 +86,8 @@ export async function createPlatformTenant(token: string, name: string): Promise
     headers: buildAuthHeaders(token, { 'Content-Type': 'application/json' }),
     body: JSON.stringify({ name: trimmed }),
   });
-  return handleResponse<PlatformTenantSummary>(res);
+  const data = await handleResponse<unknown>(res);
+  return normalizeTenant(data);
 }
 
 export async function updatePlatformTenant(
@@ -73,7 +100,8 @@ export async function updatePlatformTenant(
     headers: buildAuthHeaders(token, { 'Content-Type': 'application/json' }),
     body: JSON.stringify(payload),
   });
-  return handleResponse<PlatformTenantSummary>(res);
+  const data = await handleResponse<unknown>(res);
+  return normalizeTenant(data);
 }
 
 export async function suspendPlatformTenant(token: string, tenantId: string, isSuspended: boolean) {
