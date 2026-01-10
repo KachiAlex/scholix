@@ -2,6 +2,7 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { Prisma, TenantRole, User } from '@prisma/client';
 import { SystemRole } from '../auth/roles.constants';
 import { PrismaService } from '../prisma/prisma.service';
+import { UpdateTenantDto } from './dto/update-tenant.dto';
 
 const TENANT_ROLE_VALUES = Object.values(TenantRole);
 
@@ -19,14 +20,7 @@ export class TenantsService {
           include: { user: { select: { id: true, email: true, createdAt: true, updatedAt: true } } },
           orderBy: { createdAt: 'asc' },
         },
-        _count: {
-          select: {
-            memberships: true,
-            students: true,
-            classes: true,
-            subjects: true,
-          },
-        },
+        _count: this.selectTenantCounts(),
       },
     });
   }
@@ -69,13 +63,47 @@ export class TenantsService {
     });
   }
 
-  async updateTenant(tenantId: string, dto: { name?: string }) {
-    if (!dto.name || !dto.name.trim()) throw new BadRequestException('name is required');
+  async updateTenant(tenantId: string, dto: UpdateTenantDto) {
+    const payload: Prisma.SchoolUncheckedUpdateInput = {};
+
+    if (dto.name !== undefined) {
+      const trimmed = dto.name.trim();
+      if (!trimmed) throw new BadRequestException('name cannot be empty');
+      payload.name = trimmed;
+    }
+
+    if (dto.licenseSeats !== undefined) {
+      payload.licenseSeats = dto.licenseSeats;
+    }
+
+    if (dto.licenseExpiresAt !== undefined) {
+      payload.licenseExpiresAt = dto.licenseExpiresAt ? new Date(dto.licenseExpiresAt) : null;
+    }
+
+    if (dto.licenseNotes !== undefined) {
+      payload.licenseNotes = dto.licenseNotes ? dto.licenseNotes.trim() : null;
+    }
+
+    if (dto.isSuspended !== undefined) {
+      payload.isSuspended = dto.isSuspended;
+    }
+
+    if (Object.keys(payload).length === 0) {
+      throw new BadRequestException('no updates provided');
+    }
+
     await this.ensureTenant(tenantId);
 
     return this.prisma.school.update({
       where: { id: tenantId },
-      data: { name: dto.name.trim() },
+      data: payload,
+      include: {
+        memberships: {
+          include: { user: { select: { id: true, email: true, createdAt: true, updatedAt: true } } },
+          orderBy: { createdAt: 'asc' },
+        },
+        _count: this.selectTenantCounts(),
+      },
     });
   }
 
@@ -200,6 +228,7 @@ export class TenantsService {
           include: { user: { select: { id: true, email: true, createdAt: true, updatedAt: true } } },
           orderBy: { createdAt: 'asc' },
         },
+        _count: this.selectTenantCounts(),
       },
     });
     if (!tenant) throw new NotFoundException('tenant not found');
@@ -242,5 +271,16 @@ export class TenantsService {
       update: {},
       create: { userId, roleId: systemRole.id },
     });
+  }
+
+  private selectTenantCounts(): Prisma.SchoolCountOutputTypeDefaultArgs {
+    return {
+      select: {
+      memberships: true,
+      students: true,
+      classes: true,
+      subjects: true,
+      },
+    };
   }
 }

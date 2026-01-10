@@ -17,14 +17,7 @@ export async function GET(req: NextRequest) {
     const tenants = await prisma.school.findMany({
       orderBy: { createdAt: 'desc' },
       include: {
-        _count: {
-          select: {
-            memberships: true,
-            students: true,
-            classes: true,
-            subjects: true,
-          },
-        },
+        _count: selectTenantCounts(),
       },
     });
 
@@ -44,10 +37,24 @@ export async function POST(req: NextRequest) {
 
     const tenant = await prisma.school.create({
       data: { name },
+      include: {
+        _count: selectTenantCounts(),
+      },
     });
 
     return NextResponse.json(tenant);
   } catch (err) {
     return mapErrorToResponse(err);
   }
+}
+
+function selectTenantCounts() {
+  return {
+    select: {
+      memberships: true,
+      students: true,
+      classes: true,
+      subjects: true,
+    },
+  };
 }

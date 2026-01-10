@@ -31,6 +31,10 @@ enum TenantRole {
 model School {
   id              String                 @id @default(cuid())
   name            String
+  licenseSeats    Int                 @default(100)
+  licenseExpiresAt DateTime?
+  licenseNotes    String?
+  isSuspended     Boolean             @default(false)
   users           User[]                 @relation("PrimarySchool")
   memberships     UserSchoolMembership[]
   activeUsers     User[]                 @relation("ActiveUserSchool")
