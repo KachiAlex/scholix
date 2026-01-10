@@ -1,7 +1,11 @@
+import Image from 'next/image';
+
 export default function HomePage() {
+  const containerPadding = '2.5rem clamp(1.5rem, 5vw, 5rem) 4.5rem';
+
   return (
     <main style={{ minHeight: '100vh' }}>
-      <div style={{ padding: '2.5rem clamp(1.5rem, 5vw, 5rem) 4rem' }}>
+      <div style={{ padding: containerPadding }}>
         <header style={{ maxWidth: 1240, margin: '0 auto', display: 'flex', alignItems: 'center', gap: '1rem' }}>
           <div className="pill">Scholix</div>
           <div style={{ flexGrow: 1 }} />
@@ -18,39 +22,39 @@ export default function HomePage() {
             maxWidth: 1240,
             margin: '3.5rem auto 0',
             display: 'grid',
-            gap: '2.5rem',
+            gap: '2.75rem',
             gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
             alignItems: 'center',
           }}
         >
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.75rem' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.6rem' }}>
             <div className="pill" style={{ width: 'fit-content' }}>
               Unified School OS · SIS · CBT · Results
             </div>
             <div>
-              <h1 style={{ fontSize: 'clamp(3rem, 5.5vw, 4.6rem)', lineHeight: 1.05, marginBottom: '1rem' }}>
-                Run your school like a modern institution.
+              <h1 style={{ fontSize: 'clamp(2.9rem, 5.2vw, 4.7rem)', lineHeight: 1.04, marginBottom: '1rem' }}>
+                A modern portal for African schools.
               </h1>
-              <p className="text-muted" style={{ fontSize: '1.1rem', lineHeight: 1.9, maxWidth: 560, margin: 0 }}>
-                Scholix brings student information, secure CBT, and result workflows into one deliberate portal—built for
-                school leaders, registrars, exam officers, and guardians.
+              <p className="text-muted" style={{ fontSize: '1.1rem', lineHeight: 1.95, maxWidth: 620, margin: 0 }}>
+                Scholix helps you run admissions, student records, CBT exams, and result workflows with speed, clarity, and
+                accountability—so your staff can focus on teaching and student outcomes.
               </p>
             </div>
 
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.9rem' }}>
               <a className="gradient-button" href="/signin" style={{ display: 'inline-flex', alignItems: 'center' }}>
-                Sign in to your portal
+                Access your portal
               </a>
               <a className="pill" href="/signup" style={{ cursor: 'pointer' }}>
-                Create a new school workspace
+                Create a school workspace
               </a>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: '1rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: '1rem' }}>
               {[
-                { label: 'CBT autosave', value: 'Instant persistence' },
-                { label: 'Academic context', value: 'Sessions & terms' },
-                { label: 'Audit-ready', value: 'Role-based access' },
+                { label: 'Fast onboarding', value: 'Classes & students in minutes' },
+                { label: 'Secure CBT', value: 'Timed exams + autosave' },
+                { label: 'Role-based access', value: 'Audit-ready workflows' },
               ].map((item) => (
                 <div
                   key={item.label}
@@ -64,68 +68,212 @@ export default function HomePage() {
                   <p className="text-muted" style={{ margin: 0 }}>
                     {item.label}
                   </p>
-                  <strong style={{ fontSize: '1.15rem' }}>{item.value}</strong>
+                  <strong style={{ fontSize: '1.05rem' }}>{item.value}</strong>
                 </div>
               ))}
             </div>
           </div>
 
-          <div className="glass-card" style={{ padding: '2.25rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-            <div>
-              <h2 style={{ margin: 0, fontSize: '1.9rem' }}>Everything leaders need, in one cockpit</h2>
-              <p className="text-muted" style={{ marginTop: '0.75rem', lineHeight: 1.8 }}>
-                Configure classes, subjects, sessions, and exams. Start CBT attempts with autosave. Publish results using
-                templates.
-              </p>
-            </div>
-            <div style={{ display: 'grid', gap: '0.85rem' }}>
-              {[
-                { title: 'SIS Controls', detail: 'Enroll students, manage classes & subjects, lock active sessions.' },
-                { title: 'Secure CBT', detail: 'Question banks, timed exams, attempts, autosave answers.' },
-                { title: 'Results (coming)', detail: 'Weighted grading, broadsheets, transcripts, approvals.' },
-              ].map((feature) => (
-                <div
-                  key={feature.title}
-                  style={{
-                    padding: '1rem 1.1rem',
-                    borderRadius: 18,
-                    border: '1px solid rgba(255,255,255,0.12)',
-                    background: 'rgba(15,23,42,0.65)',
-                  }}
-                >
-                  <p style={{ margin: 0, fontWeight: 650 }}>{feature.title}</p>
-                  <p className="text-muted" style={{ margin: 0, marginTop: 6, lineHeight: 1.6 }}>
-                    {feature.detail}
+          <div
+            style={{
+              display: 'grid',
+              gap: '1rem',
+              gridTemplateColumns: 'repeat(6, 1fr)',
+              alignItems: 'stretch',
+            }}
+          >
+            <div
+              className="glass-card"
+              style={{
+                gridColumn: 'span 4',
+                padding: 0,
+                overflow: 'hidden',
+                minHeight: 360,
+                position: 'relative',
+              }}
+            >
+              <Image
+                alt="African students learning together"
+                fill
+                priority
+                sizes="(max-width: 900px) 100vw, 60vw"
+                src="https://images.unsplash.com/photo-1529390079861-591de354faf5?auto=format&fit=crop&w=1600&q=80"
+                style={{ objectFit: 'cover' }}
+              />
+              <div
+                style={{
+                  position: 'absolute',
+                  inset: 0,
+                  background:
+                    'linear-gradient(140deg, rgba(2,6,23,0.75) 0%, rgba(2,6,23,0.35) 40%, rgba(2,6,23,0.78) 100%)',
+                }}
+              />
+              <div style={{ position: 'absolute', inset: 0, padding: '1.5rem', display: 'flex', alignItems: 'flex-end' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', maxWidth: 520 }}>
+                  <div className="pill" style={{ width: 'fit-content' }}>
+                    Built for local realities
+                  </div>
+                  <p style={{ margin: 0, fontWeight: 650, fontSize: '1.2rem', lineHeight: 1.4 }}>
+                    Run registration, exams, and reporting without spreadsheets, paper trails, or guesswork.
                   </p>
                 </div>
-              ))}
+              </div>
             </div>
-            <div className="pill" style={{ justifyContent: 'space-between' }}>
-              <span>API status</span>
-              <strong style={{ color: '#86efac' }}>Healthy</strong>
+
+            <div className="glass-card" style={{ gridColumn: 'span 2', padding: 0, overflow: 'hidden', minHeight: 170 }}>
+              <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+                <Image
+                  alt="African pupil in class"
+                  fill
+                  sizes="(max-width: 900px) 100vw, 33vw"
+                  src="https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=900&q=80"
+                  style={{ objectFit: 'cover' }}
+                />
+              </div>
             </div>
-            <code style={{ fontSize: '0.95rem', opacity: 0.9 }}>GET /api/health</code>
+
+            <div className="glass-card" style={{ gridColumn: 'span 2', padding: '1.35rem', display: 'flex', flexDirection: 'column', gap: '0.9rem' }}>
+              <div className="pill" style={{ justifyContent: 'space-between' }}>
+                <span>API status</span>
+                <strong style={{ color: '#86efac' }}>Healthy</strong>
+              </div>
+              <div>
+                <p style={{ margin: 0, fontWeight: 650, fontSize: '1.1rem' }}>One cockpit, many workflows</p>
+                <p className="text-muted" style={{ margin: 0, marginTop: 8, lineHeight: 1.7 }}>
+                  Keep SIS, CBT, and results aligned by session and term—with clean permissions and traceable changes.
+                </p>
+              </div>
+              <code style={{ fontSize: '0.95rem', opacity: 0.9 }}>GET /api/health</code>
+            </div>
+
+            <div className="glass-card" style={{ gridColumn: 'span 4', padding: 0, overflow: 'hidden', minHeight: 200 }}>
+              <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+                <Image
+                  alt="African students collaborating"
+                  fill
+                  sizes="(max-width: 900px) 100vw, 60vw"
+                  src="https://images.unsplash.com/photo-1521737604893-d14cc237f11d?auto=format&fit=crop&w=1400&q=80"
+                  style={{ objectFit: 'cover' }}
+                />
+              </div>
+            </div>
           </div>
         </section>
 
-        <section style={{ maxWidth: 1240, margin: '4rem auto 0' }}>
+        <section style={{ maxWidth: 1240, margin: '4.5rem auto 0' }}>
+          <div style={{ display: 'grid', gap: '2rem', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', alignItems: 'start' }}>
+            <div>
+              <h2 className="section-title" style={{ marginTop: 0 }}>
+                What Scholix does
+              </h2>
+              <p className="section-subtitle" style={{ maxWidth: 560 }}>
+                A school management solution that replaces fragmented tools with a single, secure system.
+              </p>
+              <div style={{ display: 'grid', gap: '0.9rem' }}>
+                {[
+                  { title: 'Student Information System (SIS)', detail: 'Enroll students, manage classes, subjects, sessions, and terms.' },
+                  { title: 'Computer Based Testing (CBT)', detail: 'Create exams, set timers, autosave attempts, and track submissions.' },
+                  { title: 'Results workflow', detail: 'Prepare templates, publish with approvals, and keep grading consistent across classes.' },
+                ].map((feature) => (
+                  <div
+                    key={feature.title}
+                    style={{
+                      padding: '1rem 1.1rem',
+                      borderRadius: 18,
+                      border: '1px solid rgba(255,255,255,0.12)',
+                      background: 'rgba(15,23,42,0.6)',
+                    }}
+                  >
+                    <p style={{ margin: 0, fontWeight: 650 }}>{feature.title}</p>
+                    <p className="text-muted" style={{ margin: 0, marginTop: 6, lineHeight: 1.6 }}>
+                      {feature.detail}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="glass-card" style={{ padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <h3 style={{ margin: 0, fontSize: '1.55rem' }}>From chaos to clarity</h3>
+              <p className="text-muted" style={{ margin: 0, lineHeight: 1.85 }}>
+                Stop chasing spreadsheets, WhatsApp lists, and duplicated entries. Scholix keeps your academic context
+                consistent so student records and exam data always match the right session, term, class, and subject.
+              </p>
+              <div style={{ display: 'grid', gap: '0.75rem' }}>
+                {[
+                  { label: 'Data integrity', value: 'One source of truth' },
+                  { label: 'Operational speed', value: 'Less admin overhead' },
+                  { label: 'Trust', value: 'Transparent actions & access' },
+                ].map((stat) => (
+                  <div key={stat.label} className="pill" style={{ justifyContent: 'space-between' }}>
+                    <span style={{ opacity: 0.85 }}>{stat.label}</span>
+                    <strong>{stat.value}</strong>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section style={{ maxWidth: 1240, margin: '4.5rem auto 0' }}>
+          <h2 className="section-title" style={{ marginTop: 0 }}>
+            How it works
+          </h2>
+          <p className="section-subtitle" style={{ maxWidth: 720 }}>
+            Set up once, then run every term with the same clean process.
+          </p>
+          <div style={{ display: 'grid', gap: '1.25rem', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))' }}>
+            {[
+              { step: '01', title: 'Create your workspace', detail: 'Add school profile, campuses, sessions, and terms.' },
+              { step: '02', title: 'Organize academics', detail: 'Define classes, subjects, and student enrollment.' },
+              { step: '03', title: 'Run CBT securely', detail: 'Publish exams, track attempts, and keep answers safe with autosave.' },
+              { step: '04', title: 'Compile and publish results', detail: 'Use templates, approvals, and consistent grading rules.' },
+            ].map((item) => (
+              <div key={item.step} className="glass-card" style={{ padding: '1.6rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                <div className="pill" style={{ width: 'fit-content' }}>
+                  Step {item.step}
+                </div>
+                <h3 style={{ margin: 0 }}>{item.title}</h3>
+                <p className="text-muted" style={{ margin: 0, lineHeight: 1.8 }}>
+                  {item.detail}
+                </p>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section style={{ maxWidth: 1240, margin: '4.5rem auto 0' }}>
+          <h2 className="section-title" style={{ marginTop: 0 }}>
+            Built for every role
+          </h2>
+          <p className="section-subtitle" style={{ maxWidth: 760 }}>
+            A shared system with tailored experiences for leadership, admin, and guardians.
+          </p>
           <div style={{ display: 'grid', gap: '1.25rem', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))' }}>
             {[
               {
                 title: 'For Proprietors',
-                detail: 'Get dashboards across campuses, term cycles, and exam readiness at a glance.',
+                detail: 'Dashboards across terms and campuses; visibility into exam readiness, performance, and operations.',
               },
               {
                 title: 'For Registrars',
-                detail: 'Maintain clean student records, enforce context, and reconcile changes with clarity.',
+                detail: 'Clean student data, controlled edits, and consistent academic context across the entire school.',
               },
               {
                 title: 'For Exam Officers',
-                detail: 'Schedule exams, monitor attempts, and retrieve submissions without manual spreadsheets.',
+                detail: 'Schedule CBT exams, monitor attempts, and retrieve submissions without spreadsheet chaos.',
+              },
+              {
+                title: 'For Teachers',
+                detail: 'Structured class lists, subject mapping, and streamlined assessment workflows per term.',
               },
               {
                 title: 'For Guardians',
-                detail: 'Upcoming: view results, attendance snapshots, and transcript requests from one portal.',
+                detail: 'Upcoming: view results, request transcripts, and stay informed from one portal.',
+              },
+              {
+                title: 'For Students',
+                detail: 'A focused CBT exam experience that reduces mistakes with autosave and clear timing.',
               },
             ].map((card) => (
               <div key={card.title} className="glass-card" style={{ padding: '1.6rem' }}>
@@ -135,6 +283,40 @@ export default function HomePage() {
                 </p>
               </div>
             ))}
+          </div>
+        </section>
+
+        <section style={{ maxWidth: 1240, margin: '4.75rem auto 0' }}>
+          <div
+            className="glass-card"
+            style={{
+              padding: '2.25rem',
+              display: 'grid',
+              gap: '1.75rem',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+              alignItems: 'center',
+            }}
+          >
+            <div>
+              <h2 style={{ marginTop: 0, fontSize: 'clamp(1.9rem, 2.6vw, 2.4rem)', marginBottom: '0.75rem' }}>
+                Ready to modernize your school operations?
+              </h2>
+              <p className="text-muted" style={{ margin: 0, lineHeight: 1.9, maxWidth: 560 }}>
+                Create a workspace, invite your staff, and start your next term with structure. Scholix keeps your records
+                clean and your assessments secure.
+              </p>
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.9rem', justifyContent: 'flex-end' }}>
+              <a className="gradient-button" href="/signup" style={{ display: 'inline-flex', alignItems: 'center' }}>
+                Get started
+              </a>
+              <a className="pill" href="/signin" style={{ cursor: 'pointer' }}>
+                Sign in
+              </a>
+              <a className="pill" href="/portal" style={{ cursor: 'pointer' }}>
+                Open portal
+              </a>
+            </div>
           </div>
         </section>
 
