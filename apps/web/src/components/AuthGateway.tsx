@@ -69,156 +69,6 @@ export function AuthGateway({ initialMode = 'login' }: { initialMode?: Mode }) {
       resetToAuth();
       return;
     }
-
-function PlatformTenantPanel({ token }: { token: string }) {
-  const [tenants, setTenants] = useState<PlatformTenantSummary[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [creating, setCreating] = useState(false);
-  const [tenantName, setTenantName] = useState('');
-
-  const loadTenants = useCallback(async () => {
-    setLoading(true);
-    setErrorMessage(null);
-    try {
-      const data = await fetchPlatformTenants(token);
-      setTenants(data);
-    } catch (err) {
-      setErrorMessage(err instanceof Error ? err.message : 'Unable to load tenants');
-    } finally {
-      setLoading(false);
-    }
-  }, [token]);
-
-  useEffect(() => {
-    void loadTenants();
-  }, [loadTenants]);
-
-  const handleCreateTenant = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (creating || !tenantName.trim()) return;
-    try {
-      setCreating(true);
-      const tenant = await createPlatformTenant(token, tenantName);
-      setTenants((prev) => [tenant, ...prev]);
-      setTenantName('');
-    } catch (err) {
-      setErrorMessage(err instanceof Error ? err.message : 'Unable to create tenant');
-    } finally {
-      setCreating(false);
-    }
-  };
-
-  return (
-    <section
-      style={{
-        marginTop: '2rem',
-        borderRadius: 20,
-        border: '1px solid rgba(255,255,255,0.15)',
-        background: 'rgba(15,23,42,0.7)',
-        padding: '1.5rem',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '1.25rem',
-      }}
-    >
-      <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
-        <div>
-          <p className="text-muted" style={{ marginBottom: 4 }}>
-            Superadmin tools
-          </p>
-          <h3 style={{ margin: 0 }}>Tenant directory</h3>
-        </div>
-        <div style={{ display: 'flex', gap: '0.5rem' }}>
-          <button type="button" className="pill" style={{ cursor: 'pointer' }} onClick={() => void loadTenants()}>
-            Refresh
-          </button>
-        </div>
-      </div>
-
-      <form
-        onSubmit={handleCreateTenant}
-        style={{
-          display: 'flex',
-          gap: '0.75rem',
-          flexWrap: 'wrap',
-          alignItems: 'center',
-        }}
-      >
-        <input
-          className="input-field"
-          style={{ flex: '1 1 320px' }}
-          value={tenantName}
-          onChange={(e) => setTenantName(e.target.value)}
-          placeholder="New tenant name"
-          required
-        />
-        <button className="gradient-button" type="submit" disabled={creating}>
-          {creating ? 'Creating…' : 'Add tenant'}
-        </button>
-      </form>
-
-      {errorMessage && (
-        <p className="form-error" style={{ margin: 0 }}>
-          {errorMessage}
-        </p>
-      )}
-
-      {loading ? (
-        <p className="text-muted" style={{ margin: 0 }}>
-          Loading tenants…
-        </p>
-      ) : tenants.length === 0 ? (
-        <p className="text-muted" style={{ margin: 0 }}>
-          No tenants yet. Use the form above to create the first school workspace.
-        </p>
-      ) : (
-        <div
-          style={{
-            border: '1px solid rgba(255,255,255,0.12)',
-            borderRadius: 18,
-            overflow: 'hidden',
-          }}
-        >
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: '2fr repeat(4, 1fr)',
-              gap: '0.5rem',
-              padding: '0.75rem 1rem',
-              background: 'rgba(15,23,42,0.85)',
-              fontWeight: 600,
-            }}
-          >
-            <span>Name</span>
-            <span>Members</span>
-            <span>Students</span>
-            <span>Classes</span>
-            <span>Subjects</span>
-          </div>
-          {tenants.map((tenant, index) => (
-            <div
-              key={tenant.id}
-              style={{
-                display: 'grid',
-                gridTemplateColumns: '2fr repeat(4, 1fr)',
-                gap: '0.5rem',
-                padding: '0.75rem 1rem',
-                background: index % 2 === 0 ? 'rgba(15,23,42,0.65)' : 'rgba(15,23,42,0.5)',
-              }}
-            >
-              <span>{tenant.name}</span>
-              <span>{tenant._count.memberships}</span>
-              <span>{tenant._count.students}</span>
-              <span>{tenant._count.classes}</span>
-              <span>{tenant._count.subjects}</span>
-            </div>
-          ))}
-        </div>
-      )}
-    </section>
-  );
-}
     setToken(storedToken);
 
     const controller = new AbortController();
@@ -398,6 +248,156 @@ function PlatformTenantPanel({ token }: { token: string }) {
         </>
       )}
     </div>
+  );
+}
+
+function PlatformTenantPanel({ token }: { token: string }) {
+  const [tenants, setTenants] = useState<PlatformTenantSummary[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [creating, setCreating] = useState(false);
+  const [tenantName, setTenantName] = useState('');
+
+  const loadTenants = useCallback(async () => {
+    setLoading(true);
+    setErrorMessage(null);
+    try {
+      const data = await fetchPlatformTenants(token);
+      setTenants(data);
+    } catch (err) {
+      setErrorMessage(err instanceof Error ? err.message : 'Unable to load tenants');
+    } finally {
+      setLoading(false);
+    }
+  }, [token]);
+
+  useEffect(() => {
+    void loadTenants();
+  }, [loadTenants]);
+
+  const handleCreateTenant = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (creating || !tenantName.trim()) return;
+    try {
+      setCreating(true);
+      const tenant = await createPlatformTenant(token, tenantName);
+      setTenants((prev) => [tenant, ...prev]);
+      setTenantName('');
+    } catch (err) {
+      setErrorMessage(err instanceof Error ? err.message : 'Unable to create tenant');
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  return (
+    <section
+      style={{
+        marginTop: '2rem',
+        borderRadius: 20,
+        border: '1px solid rgba(255,255,255,0.15)',
+        background: 'rgba(15,23,42,0.7)',
+        padding: '1.5rem',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '1.25rem',
+      }}
+    >
+      <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
+        <div>
+          <p className="text-muted" style={{ marginBottom: 4 }}>
+            Superadmin tools
+          </p>
+          <h3 style={{ margin: 0 }}>Tenant directory</h3>
+        </div>
+        <div style={{ display: 'flex', gap: '0.5rem' }}>
+          <button type="button" className="pill" style={{ cursor: 'pointer' }} onClick={() => void loadTenants()}>
+            Refresh
+          </button>
+        </div>
+      </div>
+
+      <form
+        onSubmit={handleCreateTenant}
+        style={{
+          display: 'flex',
+          gap: '0.75rem',
+          flexWrap: 'wrap',
+          alignItems: 'center',
+        }}
+      >
+        <input
+          className="input-field"
+          style={{ flex: '1 1 320px' }}
+          value={tenantName}
+          onChange={(e) => setTenantName(e.target.value)}
+          placeholder="New tenant name"
+          required
+        />
+        <button className="gradient-button" type="submit" disabled={creating}>
+          {creating ? 'Creating…' : 'Add tenant'}
+        </button>
+      </form>
+
+      {errorMessage && (
+        <p className="form-error" style={{ margin: 0 }}>
+          {errorMessage}
+        </p>
+      )}
+
+      {loading ? (
+        <p className="text-muted" style={{ margin: 0 }}>
+          Loading tenants…
+        </p>
+      ) : tenants.length === 0 ? (
+        <p className="text-muted" style={{ margin: 0 }}>
+          No tenants yet. Use the form above to create the first school workspace.
+        </p>
+      ) : (
+        <div
+          style={{
+            border: '1px solid rgba(255,255,255,0.12)',
+            borderRadius: 18,
+            overflow: 'hidden',
+          }}
+        >
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: '2fr repeat(4, 1fr)',
+              gap: '0.5rem',
+              padding: '0.75rem 1rem',
+              background: 'rgba(15,23,42,0.85)',
+              fontWeight: 600,
+            }}
+          >
+            <span>Name</span>
+            <span>Members</span>
+            <span>Students</span>
+            <span>Classes</span>
+            <span>Subjects</span>
+          </div>
+          {tenants.map((tenant, index) => (
+            <div
+              key={tenant.id}
+              style={{
+                display: 'grid',
+                gridTemplateColumns: '2fr repeat(4, 1fr)',
+                gap: '0.5rem',
+                padding: '0.75rem 1rem',
+                background: index % 2 === 0 ? 'rgba(15,23,42,0.65)' : 'rgba(15,23,42,0.5)',
+              }}
+            >
+              <span>{tenant.name}</span>
+              <span>{tenant._count.memberships}</span>
+              <span>{tenant._count.students}</span>
+              <span>{tenant._count.classes}</span>
+              <span>{tenant._count.subjects}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
   );
 }
 
