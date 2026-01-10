@@ -23,6 +23,7 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json(tenants);
   } catch (err) {
+    console.error('PLATFORM_TENANTS_GET_ERROR', err);
     return mapErrorToResponse(err);
   }
 }
@@ -44,6 +45,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json(tenant);
   } catch (err) {
+    console.error('PLATFORM_TENANTS_POST_ERROR', err);
     return mapErrorToResponse(err);
   }
 }
