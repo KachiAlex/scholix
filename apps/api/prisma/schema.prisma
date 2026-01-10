@@ -9,17 +9,12 @@ datasource db {
 
 enum CbtQuestionType {
   MCQ_SINGLE
+  MCQ_MULTIPLE
 }
 
 enum CbtAttemptStatus {
   IN_PROGRESS
   SUBMITTED
-}
-
-enum ResultDraftStatus {
-  DRAFT
-  LOCKED
-  PUBLISHED
 }
 
 enum TenantRole {
@@ -49,8 +44,6 @@ model School {
   parents         Parent[]
   cbtQuestions    CbtQuestion[]
   cbtExams        CbtExam[]
-  resultTemplates ResultTemplate[]
-  resultDrafts    StudentResultDraft[]
   createdAt       DateTime               @default(now())
   updatedAt       DateTime               @updatedAt
 }
@@ -106,7 +99,6 @@ model AcademicSession {
   terms           Term[]
   enrollments     Enrollment[]
   cbtExams        CbtExam[]
-  resultDrafts    StudentResultDraft[]
   school          School              @relation("SchoolSessions", fields: [schoolId], references: [id], onDelete: Cascade)
   activeForSchool School?             @relation("ActiveSession")
   createdAt       DateTime            @default(now())
@@ -124,7 +116,6 @@ model Term {
   session         AcademicSession    @relation(fields: [sessionId], references: [id], onDelete: Cascade)
   enrollments     Enrollment[]
   cbtExams        CbtExam[]
-  resultDrafts    StudentResultDraft[]
   activeForSchool School?            @relation("ActiveTerm")
   createdAt       DateTime           @default(now())
   updatedAt       DateTime           @updatedAt
@@ -168,7 +159,6 @@ model Student {
   enrollments  Enrollment[]
   parents      ParentStudentLink[]
   cbtAttempts  CbtAttempt[]
-  resultDrafts StudentResultDraft[]
   school       School              @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   createdAt    DateTime            @default(now())
   updatedAt    DateTime            @updatedAt
@@ -305,42 +295,4 @@ model CbtAttemptAnswer {
   updatedAt        DateTime @updatedAt
 
   @@unique([attemptId, questionId])
-}
-
-model ResultTemplate {
-  id           String   @id @default(cuid())
-  schoolId     String
-  name         String
-  weights      Json
-  gradingBands Json
-  publishedAt  DateTime?
-  school       School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  drafts       StudentResultDraft[]
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-
-  @@unique([schoolId, name])
-}
-
-model StudentResultDraft {
-  id          String             @id @default(cuid())
-  schoolId    String
-  studentId   String
-  sessionId   String
-  termId      String?
-  templateId  String?
-  status      ResultDraftStatus  @default(DRAFT)
-  payload     Json
-  comments    String?
-  lockedAt    DateTime?
-  publishedAt DateTime?
-  school      School             @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  student     Student            @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  session     AcademicSession    @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  term        Term?              @relation(fields: [termId], references: [id], onDelete: SetNull)
-  template    ResultTemplate?    @relation(fields: [templateId], references: [id], onDelete: SetNull)
-  createdAt   DateTime           @default(now())
-  updatedAt   DateTime           @updatedAt
-
-  @@unique([studentId, sessionId, termId, templateId])
 }
