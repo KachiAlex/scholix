@@ -38,7 +38,7 @@ export function AuthGateway({ initialMode = 'login' }: { initialMode?: Mode }) {
   const [busy, setBusy] = useState(false);
   const [user, setUser] = useState<AuthUser | null>(null);
   const [token, setToken] = useState<string | null>(null);
-  const [form, setForm] = useState({ email: '', password: '', schoolName: '' });
+  const [form, setForm] = useState({ email: '', password: '', schoolName: '', setupKey: '' });
   const isSuperadmin = !!user?.roles?.includes('SUPERADMIN');
 
   useEffect(() => {
@@ -56,7 +56,7 @@ export function AuthGateway({ initialMode = 'login' }: { initialMode?: Mode }) {
     setToken(null);
     setStatus('unauthenticated');
     setError(null);
-    setForm({ email: '', password: '', schoolName: '' });
+    setForm({ email: '', password: '', schoolName: '', setupKey: '' });
   }, []);
 
   useEffect(() => {
@@ -102,7 +102,11 @@ export function AuthGateway({ initialMode = 'login' }: { initialMode?: Mode }) {
       const endpoint = mode === 'login' ? '/api/auth/login' : '/api/auth/register';
       const payload =
         mode === 'login'
-          ? { email: form.email, password: form.password }
+          ? {
+              email: form.email,
+              password: form.password,
+              ...(form.setupKey ? { setupKey: form.setupKey } : {}),
+            }
           : { email: form.email, password: form.password, schoolName: form.schoolName };
 
       const res = await fetch(endpoint, {
@@ -213,6 +217,19 @@ export function AuthGateway({ initialMode = 'login' }: { initialMode?: Mode }) {
                   required
                 />
               </label>
+
+              {mode === 'login' && (
+                <label>
+                  <span>Setup Key (optional)</span>
+                  <input
+                    className="input-field"
+                    type="password"
+                    value={form.setupKey}
+                    onChange={(e) => setForm((prev) => ({ ...prev, setupKey: e.target.value }))}
+                    placeholder="Enter once to bootstrap superadmin"
+                  />
+                </label>
+              )}
 
               {mode === 'register' && (
                 <label>

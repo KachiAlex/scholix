@@ -9,6 +9,12 @@ export const runtime = 'nodejs';
 
 type UserWithRoles = Prisma.UserGetPayload<{ include: { roles: { include: { role: true } } } }>;
 
+type LoginBody = {
+  email?: unknown;
+  password?: unknown;
+  setupKey?: unknown;
+};
+
 async function autoSeedSuperadmin(email: string, password: string): Promise<UserWithRoles | null> {
   const allowAutoSeed = process.env.AUTO_BOOTSTRAP_SUPERADMIN === 'true';
   const defaultEmail = process.env.DEFAULT_SUPERADMIN_EMAIL?.trim().toLowerCase();
@@ -63,11 +69,63 @@ async function autoSeedSuperadmin(email: string, password: string): Promise<User
   });
 }
 
+async function bootstrapSuperadminWithSetupKey(
+  email: string,
+  password: string,
+  setupKey: string,
+): Promise<UserWithRoles | null> {
+  const envKey = process.env.SUPERADMIN_SETUP_KEY;
+  if (!envKey || setupKey !== envKey) {
+    return null;
+  }
+
+  const existing = await prisma.user.findUnique({
+    where: { email },
+    include: { roles: { include: { role: true } } },
+  });
+
+  if (existing) {
+    return existing as UserWithRoles;
+  }
+
+  const passwordHash = await bcrypt.hash(password, 12);
+
+  return prisma.$transaction(async (tx) => {
+    const createdUser = await tx.user.create({
+      data: {
+        email,
+        passwordHash,
+      },
+    });
+
+    const role = await tx.role.upsert({
+      where: { name: 'SUPERADMIN' },
+      create: { name: 'SUPERADMIN' },
+      update: {},
+    });
+
+    await tx.userRole.create({
+      data: {
+        userId: createdUser.id,
+        roleId: role.id,
+      },
+    });
+
+    const userWithRoles = await tx.user.findUnique({
+      where: { id: createdUser.id },
+      include: { roles: { include: { role: true } } },
+    });
+
+    return userWithRoles as UserWithRoles;
+  });
+}
+
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json().catch(() => null);
+    const body = (await req.json().catch(() => null)) as LoginBody | null;
     const emailRaw = body?.email;
     const password = body?.password;
+    const setupKeyRaw = body?.setupKey;
 
     const email = typeof emailRaw === 'string' ? emailRaw.trim().toLowerCase() : '';
     if (!email || typeof password !== 'string' || !password) {
@@ -80,7 +138,21 @@ export async function POST(req: NextRequest) {
     });
 
     if (!user) {
-      user = await autoSeedSuperadmin(email, password);
+      const setupKeyFromHeader = req.headers.get('x-setup-key');
+      const setupKey =
+        typeof setupKeyRaw === 'string'
+          ? setupKeyRaw
+          : typeof setupKeyFromHeader === 'string'
+            ? setupKeyFromHeader
+            : '';
+
+      if (setupKey) {
+        user = await bootstrapSuperadminWithSetupKey(email, password, setupKey);
+      }
+
+      if (!user) {
+        user = await autoSeedSuperadmin(email, password);
+      }
       if (!user) {
         return NextResponse.json({ message: 'invalid credentials' }, { status: 401 });
       }
