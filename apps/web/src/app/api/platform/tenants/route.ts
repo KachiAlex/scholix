@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireSuperadmin } from '@/lib/auth';
 import { mapErrorToResponse } from '@/lib/http';
+import { randomUUID } from 'crypto';
 
 export const runtime = 'nodejs';
 
@@ -34,10 +35,19 @@ export async function POST(req: NextRequest) {
     const name = typeof body?.name === 'string' ? body.name.trim() : '';
     if (!name) throw new Error('BAD_REQUEST: name is required');
 
-    const tenant = await prisma.school.create({
-      data: { name },
+    const id = randomUUID();
+
+    await prisma.$executeRaw`
+      INSERT INTO "School" ("id", "name", "createdAt", "updatedAt")
+      VALUES (${id}, ${name}, NOW(), NOW())
+    `;
+
+    const tenant = await prisma.school.findUnique({
+      where: { id },
       select: selectTenantSummary(),
     });
+
+    if (!tenant) throw new Error('INTERNAL: tenant insert failed');
 
     return NextResponse.json(tenant);
   } catch (err) {
