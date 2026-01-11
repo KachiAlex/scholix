@@ -52,6 +52,13 @@ export type UpdatePlatformTenantPayload = Partial<{
   isSuspended: boolean;
 }>;
 
+export type TenantAdminSummary = {
+  userId: string;
+  email: string;
+  role: string;
+  createdAt: string;
+};
+
 function buildAuthHeaders(token: string, extra?: HeadersInit): HeadersInit {
   return {
     Authorization: `Bearer ${token}`,
@@ -117,4 +124,48 @@ export async function deletePlatformTenant(token: string, tenantId: string): Pro
     const body = await res.json().catch(() => ({ message: 'Request failed' }));
     throw new Error(body.message || 'Unable to delete tenant');
   }
+}
+
+export async function fetchTenantAdmins(token: string, tenantId: string): Promise<TenantAdminSummary[]> {
+  const res = await fetch(`${BASE_PATH}/${tenantId}/admins`, {
+    headers: buildAuthHeaders(token),
+    cache: 'no-store',
+  });
+  return handleResponse<TenantAdminSummary[]>(res);
+}
+
+export async function createTenantAdmin(
+  token: string,
+  tenantId: string,
+  payload: { email: string; password: string },
+): Promise<TenantAdminSummary> {
+  const res = await fetch(`${BASE_PATH}/${tenantId}/admins`, {
+    method: 'POST',
+    headers: buildAuthHeaders(token, { 'Content-Type': 'application/json' }),
+    body: JSON.stringify(payload),
+  });
+  const data = await handleResponse<any>(res);
+  return (data?.admin ?? data) as TenantAdminSummary;
+}
+
+export async function resetTenantAdminPassword(
+  token: string,
+  tenantId: string,
+  userId: string,
+  password: string,
+): Promise<void> {
+  const res = await fetch(`${BASE_PATH}/${tenantId}/admins/${userId}`, {
+    method: 'PATCH',
+    headers: buildAuthHeaders(token, { 'Content-Type': 'application/json' }),
+    body: JSON.stringify({ password }),
+  });
+  await handleResponse<any>(res);
+}
+
+export async function removeTenantAdmin(token: string, tenantId: string, userId: string): Promise<void> {
+  const res = await fetch(`${BASE_PATH}/${tenantId}/admins/${userId}`, {
+    method: 'DELETE',
+    headers: buildAuthHeaders(token),
+  });
+  await handleResponse<any>(res);
 }

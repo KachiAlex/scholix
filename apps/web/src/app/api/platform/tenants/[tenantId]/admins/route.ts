@@ -12,6 +12,27 @@ type CreateTenantAdminBody = {
   password?: unknown;
 };
 
+type TenantAdminResponse = {
+  userId: string;
+  email: string;
+  role: string;
+  createdAt: string;
+};
+
+function toAdminResponse(membership: {
+  userId: string;
+  role: unknown;
+  createdAt: Date;
+  user: { email: string };
+}): TenantAdminResponse {
+  return {
+    userId: membership.userId,
+    email: membership.user.email,
+    role: String(membership.role),
+    createdAt: membership.createdAt.toISOString(),
+  };
+}
+
 export async function POST(req: NextRequest, ctx: { params: { tenantId: string } }) {
   try {
     requireSuperadmin(req);
@@ -34,7 +55,7 @@ export async function POST(req: NextRequest, ctx: { params: { tenantId: string }
 
     const passwordHash = await bcrypt.hash(password, 12);
 
-    const user = await prisma.$transaction(async (tx) => {
+    const membership = await prisma.$transaction(async (tx) => {
       const createdUser = await tx.user.create({
         data: {
           email,
@@ -57,18 +78,19 @@ export async function POST(req: NextRequest, ctx: { params: { tenantId: string }
         },
       });
 
-      await tx.userSchoolMembership.create({
+      const createdMembership = await tx.userSchoolMembership.create({
         data: {
           userId: createdUser.id,
           schoolId: tenantId,
           role: 'ADMIN',
         },
+        include: { user: { select: { email: true } } },
       });
 
-      return createdUser;
+      return createdMembership;
     });
 
-    return NextResponse.json({ user: { id: user.id, email: user.email }, tenant: { id: tenant.id, name: tenant.name } });
+    return NextResponse.json({ tenantId: tenant.id, tenantName: tenant.name, admin: toAdminResponse(membership) });
   } catch (err) {
     return mapErrorToResponse(err);
   }
@@ -80,12 +102,15 @@ export async function GET(req: NextRequest, ctx: { params: { tenantId: string } 
     const tenantId = ctx.params.tenantId;
 
     const members = await prisma.userSchoolMembership.findMany({
-      where: { schoolId: tenantId },
+      where: {
+        schoolId: tenantId,
+        role: { in: ['ADMIN', 'OWNER'] },
+      },
       orderBy: { createdAt: 'desc' },
-      include: { user: { select: { id: true, email: true, createdAt: true, updatedAt: true } } },
+      include: { user: { select: { email: true } } },
     });
 
-    return NextResponse.json(members);
+    return NextResponse.json(members.map(toAdminResponse));
   } catch (err) {
     return mapErrorToResponse(err);
   }

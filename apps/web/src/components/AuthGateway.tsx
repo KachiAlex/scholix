@@ -3,11 +3,16 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react';
 import { clearAccessToken, getAccessToken, saveAccessToken } from '@/lib/client-auth';
 import {
+  createTenantAdmin,
   createPlatformTenant,
   deletePlatformTenant,
+  fetchTenantAdmins,
   fetchPlatformTenants,
+  removeTenantAdmin,
+  resetTenantAdminPassword,
   suspendPlatformTenant,
   updatePlatformTenant,
+  type TenantAdminSummary,
   type PlatformTenantSummary,
 } from '@/lib/platform-tenants';
 
@@ -405,6 +410,11 @@ function PlatformTenantPanel({ token }: { token: string }) {
   const [savingLicense, setSavingLicense] = useState(false);
   const [rowBusyId, setRowBusyId] = useState<string | null>(null);
   const [deletingTenantId, setDeletingTenantId] = useState<string | null>(null);
+  const [managingTenantId, setManagingTenantId] = useState<string | null>(null);
+  const [tenantAdmins, setTenantAdmins] = useState<Record<string, TenantAdminSummary[]>>({});
+  const [adminsLoading, setAdminsLoading] = useState(false);
+  const [adminsError, setAdminsError] = useState<string | null>(null);
+  const [newAdminForm, setNewAdminForm] = useState({ email: '', password: '' });
 
   const loadTenants = useCallback(async () => {
     setLoading(true);
@@ -536,6 +546,88 @@ function PlatformTenantPanel({ token }: { token: string }) {
     }
   };
 
+  const loadTenantAdmins = useCallback(
+    async (tenantId: string) => {
+      setAdminsLoading(true);
+      setAdminsError(null);
+      try {
+        const admins = await fetchTenantAdmins(token, tenantId);
+        setTenantAdmins((prev) => ({ ...prev, [tenantId]: admins }));
+      } catch (err) {
+        setAdminsError(err instanceof Error ? err.message : 'Unable to load tenant admins');
+      } finally {
+        setAdminsLoading(false);
+      }
+    },
+    [token],
+  );
+
+  const toggleManageAdmins = async (tenantId: string) => {
+    if (managingTenantId === tenantId) {
+      setManagingTenantId(null);
+      setAdminsError(null);
+      setNewAdminForm({ email: '', password: '' });
+      return;
+    }
+
+    setManagingTenantId(tenantId);
+    setAdminsError(null);
+    setNewAdminForm({ email: '', password: '' });
+    await loadTenantAdmins(tenantId);
+  };
+
+  const handleCreateAdmin = async (tenantId: string) => {
+    if (adminsLoading) return;
+    const email = newAdminForm.email.trim().toLowerCase();
+    const password = newAdminForm.password;
+    if (!email || !password) {
+      setAdminsError('Admin email and password are required');
+      return;
+    }
+
+    setAdminsLoading(true);
+    setAdminsError(null);
+    try {
+      await createTenantAdmin(token, tenantId, { email, password });
+      setNewAdminForm({ email: '', password: '' });
+      await loadTenantAdmins(tenantId);
+    } catch (err) {
+      setAdminsError(err instanceof Error ? err.message : 'Unable to create admin');
+    } finally {
+      setAdminsLoading(false);
+    }
+  };
+
+  const handleResetAdminPassword = async (tenantId: string, admin: TenantAdminSummary) => {
+    const password = window.prompt(`Enter a new password for ${admin.email}`);
+    if (!password) return;
+
+    setAdminsLoading(true);
+    setAdminsError(null);
+    try {
+      await resetTenantAdminPassword(token, tenantId, admin.userId, password);
+    } catch (err) {
+      setAdminsError(err instanceof Error ? err.message : 'Unable to reset password');
+    } finally {
+      setAdminsLoading(false);
+    }
+  };
+
+  const handleRemoveAdmin = async (tenantId: string, admin: TenantAdminSummary) => {
+    if (!window.confirm(`Remove ${admin.email} from this tenant?`)) return;
+
+    setAdminsLoading(true);
+    setAdminsError(null);
+    try {
+      await removeTenantAdmin(token, tenantId, admin.userId);
+      await loadTenantAdmins(tenantId);
+    } catch (err) {
+      setAdminsError(err instanceof Error ? err.message : 'Unable to remove admin');
+    } finally {
+      setAdminsLoading(false);
+    }
+  };
+
   return (
     <section
       style={{
@@ -609,6 +701,8 @@ function PlatformTenantPanel({ token }: { token: string }) {
           {tenants.map((tenant) => {
             const isEditing = editingTenantId === tenant.id;
             const suspended = tenant.isSuspended;
+            const isManagingAdmins = managingTenantId === tenant.id;
+            const adminsForTenant = tenantAdmins[tenant.id] ?? [];
             return (
               <div
                 key={tenant.id}
@@ -739,6 +833,9 @@ function PlatformTenantPanel({ token }: { token: string }) {
                     <button type="button" className="pill" onClick={() => beginEdit(tenant)}>
                       Edit license
                     </button>
+                    <button type="button" className="pill" onClick={() => void toggleManageAdmins(tenant.id)}>
+                      {isManagingAdmins ? 'Hide admins' : 'Manage admins'}
+                    </button>
                     <button
                       type="button"
                       className="pill"
@@ -757,6 +854,98 @@ function PlatformTenantPanel({ token }: { token: string }) {
                     >
                       {deletingTenantId === tenant.id ? 'Deleting…' : 'Delete'}
                     </button>
+                  </div>
+                )}
+
+                {isManagingAdmins && (
+                  <div
+                    style={{
+                      border: '1px solid rgba(255,255,255,0.15)',
+                      borderRadius: 16,
+                      padding: '1rem',
+                      display: 'grid',
+                      gap: '0.75rem',
+                      background: 'rgba(15,23,42,0.45)',
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', flexWrap: 'wrap' }}>
+                      <strong>Tenant admins</strong>
+                      <button type="button" className="pill" onClick={() => void loadTenantAdmins(tenant.id)} disabled={adminsLoading}>
+                        {adminsLoading ? 'Refreshing…' : 'Refresh admins'}
+                      </button>
+                    </div>
+
+                    {adminsError && (
+                      <p className="form-error" style={{ margin: 0 }}>
+                        {adminsError}
+                      </p>
+                    )}
+
+                    <div style={{ display: 'grid', gap: '0.5rem' }}>
+                      {adminsForTenant.length === 0 ? (
+                        <p className="text-muted" style={{ margin: 0 }}>
+                          No admins yet.
+                        </p>
+                      ) : (
+                        adminsForTenant.map((admin) => (
+                          <div key={admin.userId} style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', flexWrap: 'wrap' }}>
+                            <div>
+                              <p style={{ margin: 0, fontWeight: 600 }}>{admin.email}</p>
+                              <p className="text-muted" style={{ margin: 0 }}>
+                                {admin.role} · added {new Date(admin.createdAt).toLocaleString()}
+                              </p>
+                            </div>
+                            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                              <button
+                                type="button"
+                                className="pill"
+                                onClick={() => void handleResetAdminPassword(tenant.id, admin)}
+                                disabled={adminsLoading}
+                              >
+                                Reset password
+                              </button>
+                              <button
+                                type="button"
+                                className="pill"
+                                style={{ background: 'rgba(248,113,113,0.25)', color: '#fecaca' }}
+                                onClick={() => void handleRemoveAdmin(tenant.id, admin)}
+                                disabled={adminsLoading}
+                              >
+                                Remove
+                              </button>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+
+                    <div style={{ display: 'grid', gap: '0.5rem' }}>
+                      <strong>Create admin</strong>
+                      <div style={{ display: 'grid', gap: '0.5rem', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' }}>
+                        <input
+                          className="input-field"
+                          placeholder="Admin email"
+                          value={newAdminForm.email}
+                          onChange={(e) => setNewAdminForm((prev) => ({ ...prev, email: e.target.value }))}
+                        />
+                        <input
+                          className="input-field"
+                          placeholder="Temporary password"
+                          value={newAdminForm.password}
+                          onChange={(e) => setNewAdminForm((prev) => ({ ...prev, password: e.target.value }))}
+                        />
+                      </div>
+                      <div>
+                        <button
+                          type="button"
+                          className="gradient-button"
+                          onClick={() => void handleCreateAdmin(tenant.id)}
+                          disabled={adminsLoading}
+                        >
+                          {adminsLoading ? 'Saving…' : 'Create admin'}
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 )}
               </div>
