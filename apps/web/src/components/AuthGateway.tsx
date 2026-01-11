@@ -16,17 +16,13 @@ import {
   type PlatformTenantSummary,
 } from '@/lib/platform-tenants';
 
-const quickMetrics = [
-  { label: 'Active Tenants', value: '18', trend: '+2 onboarded this week' },
-  { label: 'Licenses Expiring Soon', value: '4', trend: 'Renewals due within 30 days' },
-  { label: 'Suspended Workspaces', value: '1', trend: 'Review compliance notice' },
-];
-
-const roadmapItems = [
-  { title: 'License Automation', detail: 'Usage-based seats with auto-invoicing' },
-  { title: 'Workspace Health KPIs', detail: 'Pull SIS/CBT signals into a unified dashboard' },
-  { title: 'Guardian Portal', detail: 'CBT score releases & transcript requests' },
-];
+type PortalContext = {
+  userId: string;
+  email: string;
+  school: { id: string; name: string } | null;
+  tenantRole: string | null;
+  systemRoles: string[];
+};
 
 type Mode = 'login' | 'register';
 
@@ -257,17 +253,18 @@ export function AuthGateway({ initialMode = 'login' }: { initialMode?: Mode }) {
             </form>
           </div>
         </div>
-      )}
+      )
+    }
 
-            {status === 'authenticated' && user && token && (
-        isSuperadmin ? (
-          <SuperadminPanel user={user} token={token} onLogout={handleLogout} />
-        ) : (
-          <PortalOverviewPanel user={user} onLogout={handleLogout} />
-        )
-      )}
-    </div>
-  );
+    {status === 'authenticated' && user && token && (
+      isSuperadmin ? (
+        <SuperadminPanel user={user} token={token} onLogout={handleLogout} />
+      ) : (
+        <TenantDashboardPanel user={user} token={token} onLogout={handleLogout} />
+      )
+    )}
+  </div>
+);
 }
 
 function SuperadminPanel({ user, token, onLogout }: { user: AuthUser; token: string; onLogout: () => void }) {
@@ -319,7 +316,52 @@ function SuperadminPanel({ user, token, onLogout }: { user: AuthUser; token: str
   );
 }
 
-function PortalOverviewPanel({ user, onLogout }: { user: AuthUser; onLogout: () => void }) {
+function TenantDashboardPanel({
+  user,
+  token,
+  onLogout,
+}: {
+  user: AuthUser;
+  token: string;
+  onLogout: () => void;
+}) {
+  const [context, setContext] = useState<PortalContext | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [term, setTerm] = useState('Term 1');
+
+  useEffect(() => {
+    const controller = new AbortController();
+    (async () => {
+      setLoading(true);
+      setLoadError(null);
+      try {
+        const res = await fetch('/api/portal/context', {
+          signal: controller.signal,
+          headers: { Authorization: `Bearer ${token}` },
+          cache: 'no-store',
+        });
+
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({ message: 'Unable to load portal context' }));
+          throw new Error(body.message || 'Unable to load portal context');
+        }
+
+        const data = (await res.json()) as PortalContext;
+        setContext(data);
+      } catch (err) {
+        if (controller.signal.aborted) return;
+        setLoadError(err instanceof Error ? err.message : 'Unable to load portal context');
+      } finally {
+        if (!controller.signal.aborted) setLoading(false);
+      }
+    })();
+
+    return () => controller.abort();
+  }, [token]);
+
+  const schoolName = context?.school?.name ?? 'School dashboard';
+
   return (
     <section style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', alignItems: 'center' }}>
@@ -328,67 +370,206 @@ function PortalOverviewPanel({ user, onLogout }: { user: AuthUser; onLogout: () 
             Signed in as
           </p>
           <h2 style={{ margin: 0 }}>{user.email}</h2>
-          <p className="text-muted" style={{ marginTop: 4 }}>
-            Portal admin
-          </p>
+          <p className="text-muted" style={{ marginTop: 4 }}>{schoolName}</p>
         </div>
         <div style={{ flexGrow: 1 }} />
-        <button type="button" className="gradient-button" onClick={onLogout}>
-          Sign out
-        </button>
+
+        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
+          <label className="pill" style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+            <span style={{ opacity: 0.85 }}>Term</span>
+            <select
+              value={term}
+              onChange={(e) => setTerm(e.target.value)}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                color: 'inherit',
+                fontWeight: 600,
+                cursor: 'pointer',
+                outline: 'none',
+              }}
+            >
+              <option value="Term 1">Term 1</option>
+              <option value="Term 2">Term 2</option>
+              <option value="Term 3">Term 3</option>
+            </select>
+          </label>
+          <button type="button" className="gradient-button" onClick={onLogout}>
+            Sign out
+          </button>
+        </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
-        {quickMetrics.map((metric) => (
-          <div
-            key={metric.label}
-            style={{
-              borderRadius: 18,
-              border: '1px solid rgba(255,255,255,0.15)',
-              padding: '1.25rem',
-              background: 'rgba(15,23,42,0.6)',
-            }}
-          >
-            <p className="text-muted" style={{ marginBottom: 4 }}>
-              {metric.label}
-            </p>
-            <div style={{ fontSize: '2rem', fontWeight: 600 }}>{metric.value}</div>
-            <p style={{ color: '#a5f3fc', marginTop: 6 }}>{metric.trend}</p>
-          </div>
-        ))}
-      </div>
+      {loading && <p className="text-muted">Loading school dashboard…</p>}
+      {loadError && <p className="form-error">{loadError}</p>}
 
-      <div
-        style={{
-          borderRadius: 18,
-          border: '1px solid rgba(255,255,255,0.12)',
-          padding: '1.25rem',
-          background: 'rgba(15,23,42,0.65)',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '0.75rem',
-        }}
-      >
-        <p className="text-muted" style={{ margin: 0 }}>
-          Ops roadmap
-        </p>
-        {roadmapItems.map((item) => (
-          <div
-            key={item.title}
-            style={{
-              padding: '0.85rem 1rem',
-              borderRadius: 14,
-              border: '1px solid rgba(255,255,255,0.08)',
-              background: 'rgba(15,23,42,0.45)',
-            }}
-          >
-            <p style={{ fontWeight: 600, margin: 0 }}>{item.title}</p>
-            <p className="text-muted" style={{ margin: 0 }}>
-              {item.detail}
-            </p>
-          </div>
-        ))}
-      </div>
+      {!loading && !loadError && (
+        <>
+          {!context?.school ? (
+            <div
+              style={{
+                borderRadius: 18,
+                border: '1px solid rgba(255,255,255,0.12)',
+                padding: '1.25rem',
+                background: 'rgba(15,23,42,0.65)',
+              }}
+            >
+              <p style={{ margin: 0, fontWeight: 600 }}>No school membership found</p>
+              <p className="text-muted" style={{ margin: 0, marginTop: 6 }}>
+                Ask the platform superadmin to assign you to a school.
+              </p>
+            </div>
+          ) : (
+            <>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: '1rem' }}>
+                {[
+                  { label: 'Total Students', value: '—', detail: 'Active | New | Withdrawn' },
+                  { label: 'Attendance Today', value: '—', detail: '% Present | % Absent | Late' },
+                  { label: 'Upcoming Exams', value: '—', detail: 'Next exam date + subjects' },
+                  { label: 'Results Status', value: '—', detail: 'Draft | Pending | Published' },
+                  { label: 'Outstanding Fees', value: '—', detail: '₦ Amount | % Collected' },
+                  { label: 'Staff on Duty', value: '—', detail: 'Present vs Expected' },
+                ].map((card) => (
+                  <div
+                    key={card.label}
+                    style={{
+                      borderRadius: 18,
+                      border: '1px solid rgba(255,255,255,0.15)',
+                      padding: '1.25rem',
+                      background: 'rgba(15,23,42,0.6)',
+                    }}
+                  >
+                    <p className="text-muted" style={{ marginBottom: 4 }}>
+                      {card.label}
+                    </p>
+                    <div style={{ fontSize: '2rem', fontWeight: 600 }}>{card.value}</div>
+                    <p style={{ color: '#a5f3fc', marginTop: 6 }}>{card.detail}</p>
+                  </div>
+                ))}
+              </div>
+
+              <div
+                style={{
+                  borderRadius: 18,
+                  border: '1px solid rgba(255,255,255,0.12)',
+                  padding: '1.25rem',
+                  background: 'rgba(15,23,42,0.65)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '0.5rem',
+                }}
+              >
+                <p style={{ margin: 0, fontWeight: 700 }}>Academic Performance Overview</p>
+                <p className="text-muted" style={{ margin: 0 }}>
+                  Trend charts, at-risk students, and subject effectiveness will appear here.
+                </p>
+              </div>
+
+              <div
+                style={{
+                  borderRadius: 18,
+                  border: '1px solid rgba(255,255,255,0.12)',
+                  padding: '1.25rem',
+                  background: 'rgba(15,23,42,0.65)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '0.5rem',
+                }}
+              >
+                <p style={{ margin: 0, fontWeight: 700 }}>CBT & Examination Control Center</p>
+                <p className="text-muted" style={{ margin: 0 }}>
+                  Exam status, live monitoring, and quick actions will appear here.
+                </p>
+              </div>
+
+              <div
+                style={{
+                  borderRadius: 18,
+                  border: '1px solid rgba(255,255,255,0.12)',
+                  padding: '1.25rem',
+                  background: 'rgba(15,23,42,0.65)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '0.5rem',
+                }}
+              >
+                <p style={{ margin: 0, fontWeight: 700 }}>Results & Assessment Management</p>
+                <p className="text-muted" style={{ margin: 0 }}>
+                  Result pipeline tracking, integrity panels, and top performers will appear here.
+                </p>
+              </div>
+
+              <div
+                style={{
+                  borderRadius: 18,
+                  border: '1px solid rgba(255,255,255,0.12)',
+                  padding: '1.25rem',
+                  background: 'rgba(15,23,42,0.65)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '0.5rem',
+                }}
+              >
+                <p style={{ margin: 0, fontWeight: 700 }}>Financial Overview</p>
+                <p className="text-muted" style={{ margin: 0 }}>
+                  Fee collection KPIs and bursar actions will appear here.
+                </p>
+              </div>
+
+              <div
+                style={{
+                  borderRadius: 18,
+                  border: '1px solid rgba(255,255,255,0.12)',
+                  padding: '1.25rem',
+                  background: 'rgba(15,23,42,0.65)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '0.5rem',
+                }}
+              >
+                <p style={{ margin: 0, fontWeight: 700 }}>Staff & Operations</p>
+                <p className="text-muted" style={{ margin: 0 }}>
+                  Workforce visibility and teacher load insights will appear here.
+                </p>
+              </div>
+
+              <div
+                style={{
+                  borderRadius: 18,
+                  border: '1px solid rgba(255,255,255,0.12)',
+                  padding: '1.25rem',
+                  background: 'rgba(15,23,42,0.65)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '0.5rem',
+                }}
+              >
+                <p style={{ margin: 0, fontWeight: 700 }}>Alerts, Tasks & Approvals</p>
+                <p className="text-muted" style={{ margin: 0 }}>
+                  Approvals queue and system alerts will appear here.
+                </p>
+              </div>
+
+              <div
+                style={{
+                  borderRadius: 18,
+                  border: '1px solid rgba(255,255,255,0.12)',
+                  padding: '1.25rem',
+                  background: 'rgba(15,23,42,0.65)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '0.5rem',
+                }}
+              >
+                <p style={{ margin: 0, fontWeight: 700 }}>Communication Center</p>
+                <p className="text-muted" style={{ margin: 0 }}>
+                  Announcements, messages, and broadcast tools will appear here.
+                </p>
+              </div>
+            </>
+          )}
+        </>
+      )}
     </section>
   );
 }
