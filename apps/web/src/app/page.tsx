@@ -6,9 +6,9 @@ export default function HomePage() {
   return (
     <main style={{ minHeight: '100vh' }}>
       <div style={{ padding: containerPadding }}>
-        <header style={{ maxWidth: 1240, margin: '0 auto', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+        <header className="page-container page-header">
           <div className="pill">Scholix</div>
-          <div style={{ flexGrow: 1 }} />
+          <div className="page-spacer" />
           <a className="pill" href="/signin" style={{ cursor: 'pointer' }}>
             Sign in
           </a>
@@ -17,17 +17,8 @@ export default function HomePage() {
           </a>
         </header>
 
-        <section
-          style={{
-            maxWidth: 1240,
-            margin: '3.5rem auto 0',
-            display: 'grid',
-            gap: '2.75rem',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
-            alignItems: 'center',
-          }}
-        >
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.6rem' }}>
+        <section className="hero-section grid-two">
+          <div className="stack">
             <div className="pill" style={{ width: 'fit-content' }}>
               Unified School OS · SIS · CBT · Results
             </div>
@@ -41,7 +32,7 @@ export default function HomePage() {
               </p>
             </div>
 
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.9rem' }}>
+            <div className="cta-row">
               <a className="gradient-button" href="/signin" style={{ display: 'inline-flex', alignItems: 'center' }}>
                 Access your portal
               </a>
@@ -50,21 +41,13 @@ export default function HomePage() {
               </a>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: '1rem' }}>
+            <div className="feature-tiles">
               {[
                 { label: 'Fast onboarding', value: 'Classes & students in minutes' },
                 { label: 'Secure CBT', value: 'Timed exams + autosave' },
                 { label: 'Role-based access', value: 'Audit-ready workflows' },
               ].map((item) => (
-                <div
-                  key={item.label}
-                  style={{
-                    padding: '1.1rem 1.2rem',
-                    borderRadius: 18,
-                    border: '1px solid rgba(255,255,255,0.14)',
-                    background: 'rgba(15,23,42,0.55)',
-                  }}
-                >
+                <div key={item.label} className="tile">
                   <p className="text-muted" style={{ margin: 0 }}>
                     {item.label}
                   </p>
@@ -74,22 +57,12 @@ export default function HomePage() {
             </div>
           </div>
 
-          <div
-            style={{
-              display: 'grid',
-              gap: '1rem',
-              gridTemplateColumns: 'repeat(6, 1fr)',
-              alignItems: 'stretch',
-            }}
-          >
+          <div className="image-mosaic">
             <div
-              className="glass-card"
+              className="glass-card image-card image-card-rel"
               style={{
                 gridColumn: 'span 4',
-                padding: 0,
-                overflow: 'hidden',
                 minHeight: 360,
-                position: 'relative',
               }}
             >
               <Image
@@ -120,8 +93,8 @@ export default function HomePage() {
               </div>
             </div>
 
-            <div className="glass-card" style={{ gridColumn: 'span 2', padding: 0, overflow: 'hidden', minHeight: 170 }}>
-              <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+            <div className="glass-card image-card" style={{ gridColumn: 'span 2', minHeight: 170 }}>
+              <div className="image-card-rel" style={{ width: '100%', height: '100%' }}>
                 <Image
                   alt="African pupil in class"
                   fill
@@ -146,8 +119,8 @@ export default function HomePage() {
               <code style={{ fontSize: '0.95rem', opacity: 0.9 }}>GET /api/health</code>
             </div>
 
-            <div className="glass-card" style={{ gridColumn: 'span 4', padding: 0, overflow: 'hidden', minHeight: 200 }}>
-              <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+            <div className="glass-card image-card" style={{ gridColumn: 'span 4', minHeight: 200 }}>
+              <div className="image-card-rel" style={{ width: '100%', height: '100%' }}>
                 <Image
                   alt="African students collaborating"
                   fill
@@ -160,8 +133,8 @@ export default function HomePage() {
           </div>
         </section>
 
-        <section style={{ maxWidth: 1240, margin: '4.5rem auto 0' }}>
-          <div style={{ display: 'grid', gap: '2rem', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', alignItems: 'start' }}>
+        <section className="section">
+          <div className="grid-cards-wide">
             <div>
               <h2 className="section-title" style={{ marginTop: 0 }}>
                 What Scholix does
@@ -215,14 +188,14 @@ export default function HomePage() {
           </div>
         </section>
 
-        <section style={{ maxWidth: 1240, margin: '4.5rem auto 0' }}>
+        <section className="section">
           <h2 className="section-title" style={{ marginTop: 0 }}>
             How it works
           </h2>
           <p className="section-subtitle" style={{ maxWidth: 720 }}>
             Set up once, then run every term with the same clean process.
           </p>
-          <div style={{ display: 'grid', gap: '1.25rem', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))' }}>
+          <div className="grid-cards">
             {[
               { step: '01', title: 'Create your workspace', detail: 'Add school profile, campuses, sessions, and terms.' },
               { step: '02', title: 'Organize academics', detail: 'Define classes, subjects, and student enrollment.' },
@@ -242,14 +215,14 @@ export default function HomePage() {
           </div>
         </section>
 
-        <section style={{ maxWidth: 1240, margin: '4.5rem auto 0' }}>
+        <section className="section">
           <h2 className="section-title" style={{ marginTop: 0 }}>
             Built for every role
           </h2>
           <p className="section-subtitle" style={{ maxWidth: 760 }}>
             A shared system with tailored experiences for leadership, admin, and guardians.
           </p>
-          <div style={{ display: 'grid', gap: '1.25rem', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))' }}>
+          <div className="grid-cards">
             {[
               {
                 title: 'For Proprietors',
@@ -286,17 +259,8 @@ export default function HomePage() {
           </div>
         </section>
 
-        <section style={{ maxWidth: 1240, margin: '4.75rem auto 0' }}>
-          <div
-            className="glass-card"
-            style={{
-              padding: '2.25rem',
-              display: 'grid',
-              gap: '1.75rem',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-              alignItems: 'center',
-            }}
-          >
+        <section className="section">
+          <div className="glass-card cta-card" style={{ padding: '2.25rem' }}>
             <div>
               <h2 style={{ marginTop: 0, fontSize: 'clamp(1.9rem, 2.6vw, 2.4rem)', marginBottom: '0.75rem' }}>
                 Ready to modernize your school operations?
@@ -306,7 +270,7 @@ export default function HomePage() {
                 clean and your assessments secure.
               </p>
             </div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.9rem', justifyContent: 'flex-end' }}>
+            <div className="cta-actions">
               <a className="gradient-button" href="/signup" style={{ display: 'inline-flex', alignItems: 'center' }}>
                 Get started
               </a>
@@ -320,7 +284,7 @@ export default function HomePage() {
           </div>
         </section>
 
-        <footer style={{ maxWidth: 1240, margin: '4.5rem auto 0', paddingBottom: '2rem' }}>
+        <footer className="footer">
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', alignItems: 'center' }}>
             <p className="text-muted" style={{ margin: 0 }}>
               © {new Date().getFullYear()} Scholix. Built for modern academies.
