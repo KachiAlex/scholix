@@ -40,6 +40,17 @@ function PortalShell({ children }: { children: React.ReactNode }) {
     }
   }, [error, router]);
 
+  const systemRoles = context?.systemRoles ?? [];
+  const isSuperadmin = systemRoles.includes('SUPERADMIN');
+  const hasTenantMembership = Boolean(context?.tenantRole);
+  const isPlatformSuperadminOnly = isSuperadmin && !hasTenantMembership;
+
+  useEffect(() => {
+    if (isPlatformSuperadminOnly && pathname !== '/portal/settings') {
+      router.replace('/portal/settings');
+    }
+  }, [isPlatformSuperadminOnly, pathname, router]);
+
   if (loading) {
     return (
       <main style={{ padding: '2.5rem clamp(1.5rem, 5vw, 5rem)', minHeight: '100vh' }}>
@@ -56,18 +67,10 @@ function PortalShell({ children }: { children: React.ReactNode }) {
     );
   }
 
-  const isSuperadmin = context.systemRoles.includes('SUPERADMIN');
-  const isPlatformSuperadminOnly = isSuperadmin && !context.tenantRole;
   const sessions = context.sessions;
   const activeSessionId = context.activeSession?.id ?? '';
   const activeTermId = context.activeTerm?.id ?? '';
   const navItems = isPlatformSuperadminOnly ? SUPERADMIN_NAV : NAV_ITEMS;
-
-  useEffect(() => {
-    if (isPlatformSuperadminOnly && pathname !== '/portal/settings') {
-      router.replace('/portal/settings');
-    }
-  }, [isPlatformSuperadminOnly, pathname, router]);
 
   const handleSessionChange = async (nextSessionId: string) => {
     if (!nextSessionId || nextSessionId === activeSessionId || selectorBusy) return;
