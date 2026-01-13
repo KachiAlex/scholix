@@ -1,9 +1,9 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { clearAccessToken, getAccessToken } from '@/lib/client-auth';
+import { TenantContextProvider, useTenantContext } from '@/components/portal/TenantContextProvider';
 
 type AuthUser = {
   userId: string;
@@ -22,42 +22,25 @@ const NAV_ITEMS: Array<{ href: string; label: string }> = [
 ];
 
 export default function PortalAppLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <TenantContextProvider>
+      <PortalShell>{children}</PortalShell>
+    </TenantContextProvider>
+  );
+}
+
+function PortalShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
-  const [user, setUser] = useState<AuthUser | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { context, loading, error, updateSelector } = useTenantContext();
+  const [selectorBusy, setSelectorBusy] = useState(false);
+  const [selectorError, setSelectorError] = useState<string | null>(null);
 
   useEffect(() => {
-    const token = getAccessToken();
-    if (!token) {
+    if (error === 'unauthorized') {
       router.replace('/portal?mode=login');
-      return;
     }
-
-    const controller = new AbortController();
-    (async () => {
-      setLoading(true);
-      try {
-        const res = await fetch('/api/auth/me', {
-          signal: controller.signal,
-          headers: { Authorization: `Bearer ${token}` },
-          cache: 'no-store',
-        });
-        if (!res.ok) throw new Error('Session expired');
-        const data = (await res.json()) as AuthUser;
-        setUser(data);
-      } catch {
-        clearAccessToken();
-        router.replace('/portal?mode=login');
-      } finally {
-        if (!controller.signal.aborted) setLoading(false);
-      }
-    })();
-
-    return () => controller.abort();
-  }, [router]);
-
-  const isSuperadmin = useMemo(() => user?.roles?.includes('SUPERADMIN') ?? false, [user]);
+  }, [error, router]);
 
   if (loading) {
     return (
@@ -67,7 +50,44 @@ export default function PortalAppLayout({ children }: { children: React.ReactNod
     );
   }
 
-  if (!user) return null;
+  if (!context) {
+    return (
+      <main style={{ padding: '2.5rem clamp(1.5rem, 5vw, 5rem)', minHeight: '100vh' }}>
+        <p className="form-error">{error ?? 'Unable to load tenant context'}</p>
+      </main>
+    );
+  }
+
+  const isSuperadmin = context.systemRoles.includes('SUPERADMIN');
+  const sessions = context.sessions;
+  const activeSessionId = context.activeSession?.id ?? '';
+  const activeTermId = context.activeTerm?.id ?? '';
+
+  const handleSessionChange = async (nextSessionId: string) => {
+    if (!nextSessionId || nextSessionId === activeSessionId || selectorBusy) return;
+    try {
+      setSelectorBusy(true);
+      setSelectorError(null);
+      await updateSelector({ sessionId: nextSessionId });
+    } catch (err) {
+      setSelectorError(err instanceof Error ? err.message : 'Unable to switch session');
+    } finally {
+      setSelectorBusy(false);
+    }
+  };
+
+  const handleTermChange = async (nextTermId: string) => {
+    if (!nextTermId || nextTermId === activeTermId || selectorBusy) return;
+    try {
+      setSelectorBusy(true);
+      setSelectorError(null);
+      await updateSelector({ termId: nextTermId });
+    } catch (err) {
+      setSelectorError(err instanceof Error ? err.message : 'Unable to switch term');
+    } finally {
+      setSelectorBusy(false);
+    }
+  };
 
   return (
     <main style={{ minHeight: '100vh', display: 'grid', gridTemplateColumns: '260px 1fr' }}>
@@ -79,12 +99,65 @@ export default function PortalAppLayout({ children }: { children: React.ReactNod
         }}
       >
         <div style={{ display: 'grid', gap: '0.75rem', marginBottom: '1.5rem' }}>
-          <div style={{ fontWeight: 800, letterSpacing: 0.3 }}>Scholix</div>
+          <div style={{ fontWeight: 800, letterSpacing: 0.3 }}>
+            {context.school?.shortCode ?? context.school?.name ?? 'Scholix'}
+          </div>
           <div className="text-muted" style={{ fontSize: 13 }}>
-            {user.email}
+            {context.email}
           </div>
           {isSuperadmin && <span className="pill">SUPERADMIN</span>}
         </div>
+
+        {context.school ? (
+          <div style={{ display: 'grid', gap: '0.5rem', marginBottom: '1.5rem' }}>
+            <label style={{ display: 'grid', gap: 4, fontSize: 13 }}>
+              <span className="text-muted">Academic Session</span>
+              <select
+                value={activeSessionId}
+                onChange={(e) => handleSessionChange(e.target.value)}
+                disabled={selectorBusy || sessions.length === 0}
+                className="input-field"
+                style={{ padding: '0.45rem 0.6rem', fontSize: 14 }}
+              >
+                {sessions.map((session) => (
+                  <option key={session.id} value={session.id}>
+                    {session.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            {context.activeSession?.terms?.length ? (
+              <label style={{ display: 'grid', gap: 4, fontSize: 13 }}>
+                <span className="text-muted">Academic Term</span>
+                <select
+                  value={activeTermId}
+                  onChange={(e) => handleTermChange(e.target.value)}
+                  disabled={selectorBusy}
+                  className="input-field"
+                  style={{ padding: '0.45rem 0.6rem', fontSize: 14 }}
+                >
+                  {context.activeSession.terms.map((term) => (
+                    <option key={term.id} value={term.id}>
+                      {term.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ) : null}
+
+            {selectorError && (
+              <p className="form-error" style={{ margin: 0, fontSize: 13 }}>
+                {selectorError}
+              </p>
+            )}
+
+            <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)' }}>
+              <strong>Audit:</strong> {context.auditSummary.pendingAlerts} alerts ·{' '}
+              {context.auditSummary.lastEventAt ? new Date(context.auditSummary.lastEventAt).toLocaleString() : 'No events yet'}
+            </div>
+          </div>
+        ) : null}
 
         <nav style={{ display: 'grid', gap: '0.35rem' }}>
           {NAV_ITEMS.map((item) => {

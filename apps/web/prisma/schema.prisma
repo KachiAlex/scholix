@@ -27,6 +27,13 @@ enum TenantRole {
   STUDENT
 }
 
+enum ResultDraftStatus {
+  DRAFT
+  REVIEW
+  APPROVED
+  PUBLISHED
+}
+
 model School {
   id              String              @id @default(cuid())
   name            String
@@ -48,6 +55,8 @@ model School {
   parents         Parent[]
   cbtQuestions    CbtQuestion[]
   cbtExams        CbtExam[]
+  resultTemplates ResultTemplate[]
+  resultDrafts    StudentResultDraft[]
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
 }
@@ -62,6 +71,8 @@ model User {
   activeSchool    School?                @relation("ActiveUserSchool", fields: [activeSchoolId], references: [id])
   memberships     UserSchoolMembership[]
   roles           UserRole[]
+  resultTemplatesCreated ResultTemplate[] @relation("ResultTemplateCreator")
+  resultTemplatesUpdated ResultTemplate[] @relation("ResultTemplateUpdater")
   createdAt       DateTime               @default(now())
   updatedAt       DateTime               @updatedAt
 }
@@ -120,6 +131,7 @@ model Term {
   session       AcademicSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
   enrollments   Enrollment[]
   cbtExams      CbtExam[]
+  resultDrafts  StudentResultDraft[]
   activeForSchool School?     @relation("ActiveTerm")
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
@@ -163,11 +175,53 @@ model Student {
   enrollments Enrollment[]
   parents     ParentStudentLink[]
   cbtAttempts CbtAttempt[]
+  resultDrafts StudentResultDraft[]
   school      School       @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
 
   @@unique([schoolId, studentNo])
+}
+
+model ResultTemplate {
+  id            String    @id @default(cuid())
+  schoolId      String
+  name          String
+  description   String?
+  gradingConfig Json?
+  isArchived    Boolean   @default(false)
+  createdById   String?
+  updatedById   String?
+  school        School    @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  createdBy     User?     @relation("ResultTemplateCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  updatedBy     User?     @relation("ResultTemplateUpdater", fields: [updatedById], references: [id], onDelete: SetNull)
+  drafts        StudentResultDraft[]
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@unique([schoolId, name])
+}
+
+model StudentResultDraft {
+  id          String            @id @default(cuid())
+  schoolId    String
+  templateId  String
+  studentId   String
+  termId      String?
+  status      ResultDraftStatus @default(DRAFT)
+  totalScore  Float?
+  data        Json?
+  notes       String?
+  publishedAt DateTime?
+  school      School            @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  template    ResultTemplate    @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  student     Student           @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  term        Term?             @relation(fields: [termId], references: [id], onDelete: SetNull)
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  @@index([schoolId, status])
+  @@unique([templateId, studentId, termId])
 }
 
 model Parent {

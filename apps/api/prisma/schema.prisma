@@ -23,6 +23,20 @@ enum TenantRole {
   VIEW_ONLY
 }
 
+enum AuditSeverity {
+  INFO
+  NOTICE
+  WARNING
+  ALERT
+}
+
+enum ResultDraftStatus {
+  DRAFT
+  REVIEW
+  APPROVED
+  PUBLISHED
+}
+
 model School {
   id              String                 @id @default(cuid())
   name            String
@@ -38,12 +52,24 @@ model School {
   activeSession   AcademicSession?       @relation("ActiveSession", fields: [activeSessionId], references: [id])
   activeTermId    String?                @unique
   activeTerm      Term?                  @relation("ActiveTerm", fields: [activeTermId], references: [id])
+  logoUrl         String?
+  primaryColor    String?
+  secondaryColor  String?
+  accentColor     String?
+  tagline         String?
+  shortCode       String?
+  location        String?
+  brandingUpdatedAt DateTime?
   classes         Class[]
   subjects        Subject[]
   students        Student[]
   parents         Parent[]
   cbtQuestions    CbtQuestion[]
   cbtExams        CbtExam[]
+  resultTemplates ResultTemplate[]
+  resultDrafts    StudentResultDraft[]
+  featureFlags    TenantFeatureFlag[]
+  auditLogs       TenantAuditLog[]
   createdAt       DateTime               @default(now())
   updatedAt       DateTime               @updatedAt
 }
@@ -56,8 +82,15 @@ model User {
   primarySchool   School?                @relation("PrimarySchool", fields: [primarySchoolId], references: [id])
   activeSchoolId  String?
   activeSchool    School?                @relation("ActiveUserSchool", fields: [activeSchoolId], references: [id])
+  activeSessionId String?
+  activeSession   AcademicSession?       @relation("UserActiveSession", fields: [activeSessionId], references: [id])
+  activeTermId    String?
+  activeTerm      Term?                  @relation("UserActiveTerm", fields: [activeTermId], references: [id])
   memberships     UserSchoolMembership[]
   roles           UserRole[]
+  authoredAudits  TenantAuditLog[]       @relation("AuditActor")
+  resultTemplatesCreated ResultTemplate[] @relation("ResultTemplateCreator")
+  resultTemplatesUpdated ResultTemplate[] @relation("ResultTemplateUpdater")
   createdAt       DateTime               @default(now())
   updatedAt       DateTime               @updatedAt
 }
@@ -101,6 +134,7 @@ model AcademicSession {
   cbtExams        CbtExam[]
   school          School              @relation("SchoolSessions", fields: [schoolId], references: [id], onDelete: Cascade)
   activeForSchool School?             @relation("ActiveSession")
+  preferredByUsers User[]             @relation("UserActiveSession")
   createdAt       DateTime            @default(now())
   updatedAt       DateTime            @updatedAt
 
@@ -116,7 +150,9 @@ model Term {
   session         AcademicSession    @relation(fields: [sessionId], references: [id], onDelete: Cascade)
   enrollments     Enrollment[]
   cbtExams        CbtExam[]
+  resultDrafts    StudentResultDraft[]
   activeForSchool School?            @relation("ActiveTerm")
+  preferredByUsers User[]            @relation("UserActiveTerm")
   createdAt       DateTime           @default(now())
   updatedAt       DateTime           @updatedAt
 
@@ -159,6 +195,7 @@ model Student {
   enrollments  Enrollment[]
   parents      ParentStudentLink[]
   cbtAttempts  CbtAttempt[]
+  resultDrafts StudentResultDraft[]
   school       School              @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   createdAt    DateTime            @default(now())
   updatedAt    DateTime            @updatedAt
@@ -295,4 +332,75 @@ model CbtAttemptAnswer {
   updatedAt        DateTime @updatedAt
 
   @@unique([attemptId, questionId])
+}
+
+model TenantFeatureFlag {
+  id        String   @id @default(cuid())
+  schoolId  String
+  slug      String
+  isEnabled Boolean  @default(true)
+  config    Json?
+  school    School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([schoolId, slug])
+}
+
+model TenantAuditLog {
+  id             String        @id @default(cuid())
+  schoolId       String
+  actorId        String?
+  category       String
+  action         String
+  severity       AuditSeverity @default(INFO)
+  details        Json?
+  acknowledgedAt DateTime?
+  school         School        @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  actor          User?         @relation("AuditActor", fields: [actorId], references: [id], onDelete: SetNull)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  @@index([schoolId, severity])
+}
+
+model ResultTemplate {
+  id            String    @id @default(cuid())
+  schoolId      String
+  name          String
+  description   String?
+  gradingConfig Json?
+  isArchived    Boolean   @default(false)
+  createdById   String?
+  updatedById   String?
+  school        School    @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  createdBy     User?     @relation("ResultTemplateCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  updatedBy     User?     @relation("ResultTemplateUpdater", fields: [updatedById], references: [id], onDelete: SetNull)
+  drafts        StudentResultDraft[]
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@unique([schoolId, name])
+}
+
+model StudentResultDraft {
+  id          String             @id @default(cuid())
+  schoolId    String
+  templateId  String
+  studentId   String
+  termId      String?
+  status      ResultDraftStatus  @default(DRAFT)
+  totalScore  Float?
+  data        Json?
+  notes       String?
+  publishedAt DateTime?
+  school      School             @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  template    ResultTemplate     @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  student     Student            @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  term        Term?              @relation(fields: [termId], references: [id], onDelete: SetNull)
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  @@index([schoolId, status])
+  @@unique([templateId, studentId, termId])
 }
