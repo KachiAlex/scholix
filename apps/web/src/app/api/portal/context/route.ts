@@ -57,13 +57,6 @@ export async function GET(req: NextRequest) {
       select: {
         id: true,
         name: true,
-        logoUrl: true,
-        primaryColor: true,
-        secondaryColor: true,
-        accentColor: true,
-        tagline: true,
-        shortCode: true,
-        location: true,
         activeSessionId: true,
         activeTermId: true,
         sessions: {
@@ -93,20 +86,20 @@ export async function GET(req: NextRequest) {
       systemRoles: authUser.roles ?? [],
       memberships: user.memberships.map((membership) => ({
         schoolId: membership.schoolId,
-        schoolName: membership.school.name,
+        schoolName: membership.school?.name ?? 'Unknown school',
         tenantRole: String(membership.role),
       })),
       school: school
         ? {
             id: school.id,
             name: school.name,
-            logoUrl: school.logoUrl,
-            primaryColor: school.primaryColor,
-            secondaryColor: school.secondaryColor,
-            accentColor: school.accentColor,
-            tagline: school.tagline,
-            shortCode: school.shortCode,
-            location: school.location,
+            logoUrl: null,
+            primaryColor: null,
+            secondaryColor: null,
+            accentColor: null,
+            tagline: null,
+            shortCode: null,
+            location: null,
           }
         : null,
       tenantRole: String(activeMembership.role),
@@ -120,6 +113,7 @@ export async function GET(req: NextRequest) {
       },
     });
   } catch (err) {
+    console.error('PORTAL_CONTEXT_ERROR', err);
     return mapErrorToResponse(err);
   }
 }
