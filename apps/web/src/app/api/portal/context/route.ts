@@ -16,41 +16,11 @@ export async function GET(req: NextRequest) {
         id: true,
         email: true,
         activeSchoolId: true,
-        activeSessionId: true,
-        activeTermId: true,
-        activeSchool: {
-          select: {
-            id: true,
-            name: true,
-            logoUrl: true,
-            primaryColor: true,
-            secondaryColor: true,
-            accentColor: true,
-            tagline: true,
-            shortCode: true,
-            location: true,
-          },
-        },
         memberships: {
           select: {
             schoolId: true,
             role: true,
             school: { select: { id: true, name: true } },
-          },
-        },
-        activeSession: {
-          select: {
-            id: true,
-            name: true,
-            createdAt: true,
-          },
-        },
-        activeTerm: {
-          select: {
-            id: true,
-            name: true,
-            startsAt: true,
-            endsAt: true,
           },
         },
       },
@@ -108,32 +78,13 @@ export async function GET(req: NextRequest) {
             },
           },
         },
-        featureFlags: {
-          select: { id: true, slug: true, isEnabled: true, config: true },
-        },
-        auditLogs: {
-          orderBy: { createdAt: 'desc' },
-          take: 1,
-          select: { createdAt: true },
-        },
-        _count: {
-          select: {
-            auditLogs: {
-              where: {
-                acknowledgedAt: null,
-                severity: { in: ['WARNING', 'ALERT'] },
-              },
-            },
-          },
-        },
       },
     });
 
     const sessions = school?.sessions ?? [];
-    const activeSession =
-      sessions.find((session) => session.id === (user.activeSessionId ?? school?.activeSessionId)) ?? sessions[0] ?? null;
+    const activeSession = sessions.find((session) => session.id === school?.activeSessionId) ?? sessions[0] ?? null;
     const activeTerm =
-      activeSession?.terms.find((term) => term.id === (user.activeTermId ?? school?.activeTermId)) ?? activeSession?.terms[0] ?? null;
+      activeSession?.terms.find((term) => term.id === school?.activeTermId) ?? activeSession?.terms[0] ?? null;
 
     return NextResponse.json({
       userId: user.id,
@@ -161,10 +112,10 @@ export async function GET(req: NextRequest) {
       activeSession,
       activeTerm,
       sessions,
-      featureFlags: school?.featureFlags ?? [],
+      featureFlags: [],
       auditSummary: {
-        pendingAlerts: school?._count.auditLogs ?? 0,
-        lastEventAt: school?.auditLogs[0]?.createdAt ?? null,
+        pendingAlerts: 0,
+        lastEventAt: null,
       },
     });
   } catch (err) {

@@ -40,6 +40,13 @@ model School {
   licenseSeats    Int                 @default(100)
   licenseExpiresAt DateTime?
   licenseNotes    String?
+  logoUrl         String?
+  primaryColor    String?
+  secondaryColor  String?
+  accentColor     String?
+  tagline         String?
+  shortCode       String?
+  location        String?
   isSuspended     Boolean             @default(false)
   users           User[]              @relation("PrimarySchool")
   memberships     UserSchoolMembership[]
