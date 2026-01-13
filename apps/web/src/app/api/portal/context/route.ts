@@ -1,6 +1,5 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
-import { AuditSeverity } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { requireUser } from '@/lib/auth';
 import { mapErrorToResponse } from '@/lib/http';
@@ -122,7 +121,7 @@ export async function GET(req: NextRequest) {
             auditLogs: {
               where: {
                 acknowledgedAt: null,
-                severity: { in: [AuditSeverity.WARNING, AuditSeverity.ALERT] },
+                severity: { in: ['WARNING', 'ALERT'] },
               },
             },
           },
