@@ -20,7 +20,12 @@ export function requireUser(req: NextRequest): { userId: string; email: string; 
   if (!token) throw new Error('UNAUTHORIZED');
 
   const secret = process.env.JWT_SECRET ?? 'dev-secret';
-  const decoded = jwt.verify(token, secret) as JwtPayload;
+  let decoded: JwtPayload;
+  try {
+    decoded = jwt.verify(token, secret) as JwtPayload;
+  } catch (err) {
+    throw new Error('UNAUTHORIZED');
+  }
 
   return {
     userId: decoded.sub,
