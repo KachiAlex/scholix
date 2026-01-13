@@ -15,6 +15,10 @@ const NAV_ITEMS: Array<{ href: string; label: string }> = [
   { href: '/portal/settings', label: 'Settings' },
 ];
 
+const SUPERADMIN_NAV: Array<{ href: string; label: string }> = [
+  { href: '/portal/settings', label: 'Platform Control' },
+];
+
 export default function PortalAppLayout({ children }: { children: React.ReactNode }) {
   return (
     <TenantContextProvider>
@@ -53,9 +57,17 @@ function PortalShell({ children }: { children: React.ReactNode }) {
   }
 
   const isSuperadmin = context.systemRoles.includes('SUPERADMIN');
+  const isPlatformSuperadminOnly = isSuperadmin && !context.tenantRole;
   const sessions = context.sessions;
   const activeSessionId = context.activeSession?.id ?? '';
   const activeTermId = context.activeTerm?.id ?? '';
+  const navItems = isPlatformSuperadminOnly ? SUPERADMIN_NAV : NAV_ITEMS;
+
+  useEffect(() => {
+    if (isPlatformSuperadminOnly && pathname !== '/portal/settings') {
+      router.replace('/portal/settings');
+    }
+  }, [isPlatformSuperadminOnly, pathname, router]);
 
   const handleSessionChange = async (nextSessionId: string) => {
     if (!nextSessionId || nextSessionId === activeSessionId || selectorBusy) return;
@@ -94,15 +106,22 @@ function PortalShell({ children }: { children: React.ReactNode }) {
       >
         <div style={{ display: 'grid', gap: '0.75rem', marginBottom: '1.5rem' }}>
           <div style={{ fontWeight: 800, letterSpacing: 0.3 }}>
-            {context.school?.shortCode ?? context.school?.name ?? 'Scholix'}
+            {isPlatformSuperadminOnly
+              ? 'Scholix Platform'
+              : context.school?.shortCode ?? context.school?.name ?? 'Scholix'}
           </div>
           <div className="text-muted" style={{ fontSize: 13 }}>
             {context.email}
           </div>
           {isSuperadmin && <span className="pill">SUPERADMIN</span>}
+          {isPlatformSuperadminOnly && (
+            <span className="text-muted" style={{ fontSize: 12 }}>
+              Manage tenant workspaces only
+            </span>
+          )}
         </div>
 
-        {context.school ? (
+        {!isPlatformSuperadminOnly && context.school ? (
           <div style={{ display: 'grid', gap: '0.5rem', marginBottom: '1.5rem' }}>
             <label style={{ display: 'grid', gap: 4, fontSize: 13 }}>
               <span className="text-muted">Academic Session</span>
@@ -154,7 +173,7 @@ function PortalShell({ children }: { children: React.ReactNode }) {
         ) : null}
 
         <nav style={{ display: 'grid', gap: '0.35rem' }}>
-          {NAV_ITEMS.map((item) => {
+          {navItems.map((item) => {
             const active = pathname === item.href;
             return (
               <Link
