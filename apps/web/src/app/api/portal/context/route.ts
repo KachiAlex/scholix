@@ -44,6 +44,7 @@ export async function GET(req: NextRequest) {
           systemRoles: authUser.roles ?? [],
           activeSession: null,
           activeTerm: null,
+          sessions: [],
           featureFlags: [],
           auditSummary: { pendingAlerts: 0, lastEventAt: null },
         },
