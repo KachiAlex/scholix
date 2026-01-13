@@ -14,7 +14,7 @@ export async function resolveTenantAdminSchool(userId: string) {
     throw new Error('FORBIDDEN');
   }
 
-  if (![TenantRole.ADMIN, TenantRole.OWNER].includes(membership.role)) {
+  if (membership.role !== TenantRole.ADMIN && membership.role !== TenantRole.OWNER) {
     throw new Error('FORBIDDEN');
   }
 

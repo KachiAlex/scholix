@@ -18,7 +18,7 @@ export function AuthGateway({ initialMode = 'login' }: { initialMode?: Mode }) {
   const [status, setStatus] = useState<'unauthenticated' | 'loading' | 'authenticated'>('loading');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [user, setUser] = useState<AuthUser | null>(null);
+  const [, setUser] = useState<AuthUser | null>(null);
   const [form, setForm] = useState({ email: '', password: '', schoolName: '', setupKey: '' });
 
   useEffect(() => {

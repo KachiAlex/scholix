@@ -5,12 +5,6 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { TenantContextProvider, useTenantContext } from '@/components/portal/TenantContextProvider';
 
-type AuthUser = {
-  userId: string;
-  email: string;
-  roles: string[];
-};
-
 const NAV_ITEMS: Array<{ href: string; label: string }> = [
   { href: '/portal/dashboard', label: 'Dashboard' },
   { href: '/portal/students', label: 'Students' },

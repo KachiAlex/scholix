@@ -1,8 +1,6 @@
-'use server';
-
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
-import { Prisma, TenantRole } from '@prisma/client';
+import { TenantRole } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { requireUser } from '@/lib/auth';
 import { mapErrorToResponse } from '@/lib/http';
@@ -49,7 +47,11 @@ export async function PATCH(req: NextRequest) {
       throw new Error('BAD_REQUEST: User has no tenant memberships');
     }
 
-    const updates: Prisma.UserUpdateInput = {};
+    const updateFields: {
+      activeSchoolId?: string | null;
+      activeSessionId?: string | null;
+      activeTermId?: string | null;
+    } = {};
 
     const resolveMembership = (schoolId: string) => {
       if (!membershipMap.has(schoolId)) {
@@ -68,9 +70,9 @@ export async function PATCH(req: NextRequest) {
     if (payload.schoolId) {
       resolveMembership(payload.schoolId);
       targetSchoolId = payload.schoolId;
-      updates.activeSchoolId = payload.schoolId;
-      updates.activeSessionId = null;
-      updates.activeTermId = null;
+      updateFields.activeSchoolId = payload.schoolId;
+      updateFields.activeSessionId = null;
+      updateFields.activeTermId = null;
     }
 
     if (payload.sessionId) {
@@ -83,9 +85,9 @@ export async function PATCH(req: NextRequest) {
       }
       resolveMembership(session.schoolId);
       targetSchoolId = session.schoolId;
-      updates.activeSchoolId = session.schoolId;
-      updates.activeSessionId = session.id;
-      updates.activeTermId = null;
+      updateFields.activeSchoolId = session.schoolId;
+      updateFields.activeSessionId = session.id;
+      updateFields.activeTermId = null;
     }
 
     if (payload.termId) {
@@ -98,9 +100,9 @@ export async function PATCH(req: NextRequest) {
       }
       resolveMembership(term.session.schoolId);
       targetSchoolId = term.session.schoolId;
-      updates.activeSchoolId = term.session.schoolId;
-      updates.activeSessionId = term.session.id;
-      updates.activeTermId = term.id;
+      updateFields.activeSchoolId = term.session.schoolId;
+      updateFields.activeSessionId = term.session.id;
+      updateFields.activeTermId = term.id;
     }
 
     if (!targetSchoolId) {
@@ -109,7 +111,11 @@ export async function PATCH(req: NextRequest) {
 
     await prisma.user.update({
       where: { id: authUser.userId },
-      data: updates,
+      data: {
+        ...(updateFields.activeSchoolId !== undefined ? { activeSchoolId: updateFields.activeSchoolId } : {}),
+        ...(updateFields.activeSessionId !== undefined ? { activeSessionId: updateFields.activeSessionId } : {}),
+        ...(updateFields.activeTermId !== undefined ? { activeTermId: updateFields.activeTermId } : {}),
+      },
     });
 
     return NextResponse.json({ ok: true }, { status: 200 });
