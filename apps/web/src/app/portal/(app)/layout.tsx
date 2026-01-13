@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { TenantContextProvider, useTenantContext } from '@/components/portal/TenantContextProvider';
+import { clearAccessToken } from '@/lib/client-auth';
 
 const NAV_ITEMS: Array<{ href: string; label: string }> = [
   { href: '/portal/dashboard', label: 'Dashboard' },
@@ -33,6 +34,7 @@ function PortalShell({ children }: { children: React.ReactNode }) {
   const { context, loading, error, updateSelector } = useTenantContext();
   const [selectorBusy, setSelectorBusy] = useState(false);
   const [selectorError, setSelectorError] = useState<string | null>(null);
+  const [logoutBusy, setLogoutBusy] = useState(false);
 
   useEffect(() => {
     if (error === 'unauthorized') {
@@ -83,6 +85,13 @@ function PortalShell({ children }: { children: React.ReactNode }) {
     } finally {
       setSelectorBusy(false);
     }
+  };
+
+  const handleLogout = () => {
+    if (logoutBusy) return;
+    setLogoutBusy(true);
+    clearAccessToken();
+    router.replace('/portal?mode=login');
   };
 
   const handleTermChange = async (nextTermId: string) => {
@@ -199,6 +208,26 @@ function PortalShell({ children }: { children: React.ReactNode }) {
             );
           })}
         </nav>
+
+        <button
+          type="button"
+          onClick={handleLogout}
+          disabled={logoutBusy}
+          className="pill"
+          style={{
+            marginTop: '1.5rem',
+            width: '100%',
+            padding: '0.6rem 0.85rem',
+            borderRadius: 14,
+            border: '1px solid rgba(255,255,255,0.2)',
+            background: 'transparent',
+            color: 'inherit',
+            fontWeight: 600,
+            cursor: logoutBusy ? 'not-allowed' : 'pointer',
+          }}
+        >
+          {logoutBusy ? 'Signing out…' : 'Log out'}
+        </button>
       </aside>
 
       <section style={{ padding: '2.5rem clamp(1.5rem, 4vw, 3rem)' }}>{children}</section>
