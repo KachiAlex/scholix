@@ -1,7 +1,23 @@
 import Image from 'next/image';
+import { listPlatformPlans } from '@/lib/platform-plans-server';
 
-export default function HomePage() {
+export const dynamic = 'force-dynamic';
+
+function formatPrice(currency: string, amount: number) {
+  try {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency,
+      maximumFractionDigits: 0,
+    }).format(amount);
+  } catch {
+    return `${currency} ${amount.toLocaleString()}`;
+  }
+}
+
+export default async function HomePage() {
   const containerPadding = '2.5rem clamp(1.5rem, 5vw, 5rem) 4.5rem';
+  const plans = await listPlatformPlans().catch(() => []);
 
   return (
     <main style={{ minHeight: '100vh' }}>
@@ -257,6 +273,111 @@ export default function HomePage() {
               </div>
             ))}
           </div>
+        </section>
+
+        <section className="section">
+          <div className="section-intro">
+            <div>
+              <h2 className="section-title" style={{ marginTop: 0 }}>
+                Pricing built for African schools
+              </h2>
+              <p className="section-subtitle" style={{ maxWidth: 720 }}>
+                Superadmin updates flow straight to these plans. Seat-based pricing keeps things predictable while discounts
+                help large teams modernize faster.
+              </p>
+            </div>
+            <a className="pill" href="/portal" style={{ cursor: 'pointer' }}>
+              Manage plans in portal
+            </a>
+          </div>
+
+          {plans.length === 0 ? (
+            <div className="glass-card" style={{ padding: '1.75rem' }}>
+              <p style={{ margin: 0, fontWeight: 600 }}>Plans syncing</p>
+              <p className="text-muted" style={{ margin: 0, marginTop: 6 }}>
+                Pricing updates are in progress. Check back shortly or configure plans from the superadmin portal.
+              </p>
+            </div>
+          ) : (
+            <div className="grid-cards" style={{ gap: '1.25rem' }}>
+              {plans.map((plan) => (
+                <div
+                  key={plan.slug}
+                  className="glass-card"
+                  style={{
+                    padding: '1.75rem',
+                    border: plan.isFeatured ? '1px solid rgba(248, 250, 252, 0.8)' : '1px solid rgba(255,255,255,0.08)',
+                    background: plan.isFeatured ? 'linear-gradient(135deg, rgba(147,197,253,0.2), rgba(14,165,233,0.15))' : undefined,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '1.1rem',
+                    position: 'relative',
+                  }}
+                >
+                  {plan.isFeatured && (
+                    <span
+                      className="pill"
+                      style={{
+                        position: 'absolute',
+                        top: 16,
+                        right: 16,
+                        background: 'rgba(14,165,233,0.2)',
+                        borderColor: 'rgba(125, 211, 252, 0.6)',
+                      }}
+                    >
+                      Featured
+                    </span>
+                  )}
+                  <div>
+                    <p style={{ margin: 0, fontSize: '1.35rem', fontWeight: 650 }}>{plan.name}</p>
+                    {plan.description && (
+                      <p className="text-muted" style={{ margin: 0, marginTop: 6, lineHeight: 1.7 }}>
+                        {plan.description}
+                      </p>
+                    )}
+                  </div>
+                  <div>
+                    <p className="text-muted" style={{ margin: 0 }}>Starting at</p>
+                    <p style={{ margin: '0.2rem 0 0', fontSize: '2rem', fontWeight: 650 }}>
+                      {formatPrice(plan.currency, plan.seatPrice)}{' '}
+                      <span style={{ fontSize: '1rem', fontWeight: 500, opacity: 0.8 }}>/ {plan.billingInterval}</span>
+                    </p>
+                    <p className="text-muted" style={{ margin: '0.35rem 0 0', fontSize: '0.95rem' }}>
+                      Minimum {plan.minSeats.toLocaleString()} seats
+                    </p>
+                    {(plan.discountPercent !== null || plan.discountLabel) && (
+                      <p
+                        className="pill"
+                        style={{
+                          width: 'fit-content',
+                          marginTop: '0.65rem',
+                          borderColor: 'rgba(74,222,128,0.4)',
+                          color: '#86efac',
+                        }}
+                      >
+                        {plan.discountLabel || `${plan.discountPercent}% discount`}
+                      </p>
+                    )}
+                  </div>
+                  {plan.features.length > 0 && (
+                    <ul style={{ margin: 0, paddingLeft: '1.2rem', display: 'grid', gap: '0.35rem' }}>
+                      {plan.features.map((feature) => (
+                        <li key={feature} style={{ lineHeight: 1.6 }}>{feature}</li>
+                      ))}
+                    </ul>
+                  )}
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.65rem', marginTop: 'auto' }}>
+                    <a className="gradient-button" href="/signup" style={{ display: 'inline-flex', alignItems: 'center' }}>
+                      Choose {plan.name}
+                    </a>
+                    <a className="pill" href="/signin" style={{ cursor: 'pointer' }}>
+                      Explore portal
+                    </a>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </section>
 
         <section className="section">
