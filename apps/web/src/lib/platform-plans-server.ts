@@ -1,3 +1,4 @@
+import type { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { DEFAULT_PLATFORM_PLANS, type PlatformPlanSeed } from './platform-plan-defaults';
 
@@ -147,7 +148,9 @@ function assertField<T>(value: T | null, message: string): T {
   return value;
 }
 
-function buildPlanData(payload: PlanUpsertPayload, { isCreate = false }: { isCreate?: boolean } = {}) {
+type PlanData = Prisma.PlatformPlanUncheckedCreateInput | Prisma.PlatformPlanUpdateInput;
+
+function buildPlanData(payload: PlanUpsertPayload, { isCreate = false }: { isCreate?: boolean } = {}): PlanData {
   const data: Record<string, any> = {};
 
   if (payload.slug || isCreate) {
@@ -205,7 +208,7 @@ function buildPlanData(payload: PlanUpsertPayload, { isCreate = false }: { isCre
 }
 
 export async function createPlatformPlan(payload: PlanUpsertPayload) {
-  const data = buildPlanData(payload, { isCreate: true });
+  const data = buildPlanData(payload, { isCreate: true }) as Prisma.PlatformPlanUncheckedCreateInput;
   const plan = await prisma.platformPlan.create({
     data,
   });
@@ -213,7 +216,7 @@ export async function createPlatformPlan(payload: PlanUpsertPayload) {
 }
 
 export async function updatePlatformPlan(slug: string, payload: PlanUpsertPayload) {
-  const data = buildPlanData(payload);
+  const data = buildPlanData(payload) as Prisma.PlatformPlanUpdateInput;
   if (Object.keys(data).length === 0) {
     throw new Error('BAD_REQUEST: no updates provided');
   }

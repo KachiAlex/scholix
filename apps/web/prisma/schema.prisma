@@ -34,6 +34,13 @@ enum ResultDraftStatus {
   PUBLISHED
 }
 
+enum AuditSeverity {
+  INFO
+  NOTICE
+  WARNING
+  ALERT
+}
+
 model School {
   id              String              @id @default(cuid())
   name            String
@@ -64,8 +71,26 @@ model School {
   cbtExams        CbtExam[]
   resultTemplates ResultTemplate[]
   resultDrafts    StudentResultDraft[]
+  auditLogs       TenantAuditLog[]
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
+}
+
+model PlatformPlan {
+  id              String   @id @default(cuid())
+  slug            String   @unique
+  name            String
+  description     String?
+  currency        String   @default("NGN")
+  seatPrice       Int
+  billingInterval String   @default("student/month")
+  minSeats        Int      @default(500)
+  discountPercent Int?
+  discountLabel   String?
+  features        Json?
+  isFeatured      Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 }
 
 model User {
@@ -78,6 +103,7 @@ model User {
   activeSchool    School?                @relation("ActiveUserSchool", fields: [activeSchoolId], references: [id])
   memberships     UserSchoolMembership[]
   roles           UserRole[]
+  authoredAudits  TenantAuditLog[]       @relation("AuditActor")
   resultTemplatesCreated ResultTemplate[] @relation("ResultTemplateCreator")
   resultTemplatesUpdated ResultTemplate[] @relation("ResultTemplateUpdater")
   createdAt       DateTime               @default(now())
@@ -360,5 +386,22 @@ model CbtAttemptAnswer {
   updatedAt        DateTime @updatedAt
 
   @@unique([attemptId, questionId])
+}
+
+model TenantAuditLog {
+  id             String        @id @default(cuid())
+  schoolId       String
+  actorId        String?
+  category       String
+  action         String
+  severity       AuditSeverity @default(INFO)
+  details        Json?
+  acknowledgedAt DateTime?
+  school         School        @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  actor          User?         @relation("AuditActor", fields: [actorId], references: [id], onDelete: SetNull)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  @@index([schoolId, severity])
 }
 
