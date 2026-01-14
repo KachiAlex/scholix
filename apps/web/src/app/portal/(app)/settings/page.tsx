@@ -12,6 +12,13 @@ import {
   type PlatformTenantSummary,
   type TenantAdminSummary,
 } from '@/lib/platform-tenants';
+import {
+  fetchPlatformPlans,
+  createPlatformPlanClient,
+  updatePlatformPlanClient,
+  deletePlatformPlanClient,
+  type PlatformPlan,
+} from '@/lib/platform-plans';
 import { getAccessToken } from '@/lib/client-auth';
 import { useTenantContext } from '@/components/portal/TenantContextProvider';
 
@@ -38,6 +45,42 @@ export default function SettingsPage() {
   const [adminResetControls, setAdminResetControls] = useState<
     Record<string, { open: boolean; value: string; busy: boolean }>
   >({});
+  const [plans, setPlans] = useState<PlatformPlan[]>([]);
+  const [plansLoading, setPlansLoading] = useState(false);
+  const [plansError, setPlansError] = useState<string | null>(null);
+  const [planForms, setPlanForms] = useState<
+    Record<
+      string,
+      {
+        name: string;
+        description: string;
+        currency: string;
+        seatPrice: string;
+        billingInterval: string;
+        minSeats: string;
+        discountPercent: string;
+        discountLabel: string;
+        features: string;
+        isFeatured: boolean;
+      }
+    >
+  >({});
+  const [newPlanForm, setNewPlanForm] = useState({
+    name: '',
+    description: '',
+    currency: 'NGN',
+    seatPrice: '',
+    billingInterval: 'student/month',
+    minSeats: '',
+    discountPercent: '',
+    discountLabel: '',
+    features: '',
+    isFeatured: false,
+  });
+  const [planActionMessage, setPlanActionMessage] = useState<string | null>(null);
+  const [creatingPlan, setCreatingPlan] = useState(false);
+  const [planSavingSlug, setPlanSavingSlug] = useState<string | null>(null);
+  const [planDeletingSlug, setPlanDeletingSlug] = useState<string | null>(null);
 
   const isSuperadmin = useMemo(() => context?.systemRoles?.includes('SUPERADMIN') ?? false, [context?.systemRoles]);
 
@@ -103,6 +146,195 @@ export default function SettingsPage() {
       void loadTenantAdmins(expandedTenantId);
     }
   }, [adminState, expandedTenantId, loadTenantAdmins]);
+
+  const planToForm = useCallback((plan: PlatformPlan) => {
+    return {
+      name: plan.name,
+      description: plan.description ?? '',
+      currency: plan.currency,
+      seatPrice: plan.seatPrice.toString(),
+      billingInterval: plan.billingInterval,
+      minSeats: plan.minSeats.toString(),
+      discountPercent: plan.discountPercent !== null ? plan.discountPercent.toString() : '',
+      discountLabel: plan.discountLabel ?? '',
+      features: plan.features.join('\n'),
+      isFeatured: plan.isFeatured,
+    };
+  }, []);
+
+  const parsePositiveInt = (value: string, label: string) => {
+    const num = Number(value);
+    if (!Number.isFinite(num) || !Number.isInteger(num) || num <= 0) {
+      throw new Error(`${label} must be a positive integer`);
+    }
+    return num;
+  };
+
+  const parseDiscount = (value: string) => {
+    const trimmed = value.trim();
+    if (!trimmed) return null;
+    const num = Number(trimmed);
+    if (!Number.isFinite(num) || !Number.isInteger(num) || num < 0 || num > 100) {
+      throw new Error('Discount percent must be between 0 and 100');
+    }
+    return num;
+  };
+
+  const featuresFromText = (value: string) =>
+    value
+      .split('\n')
+      .map((line) => line.trim())
+      .filter(Boolean);
+
+  const formToPayload = (form: (typeof planForms)[string]) => {
+    const payload = {
+      name: form.name.trim(),
+      description: form.description.trim() || null,
+      currency: form.currency.trim().toUpperCase() || 'NGN',
+      seatPrice: parsePositiveInt(form.seatPrice, 'Seat price'),
+      billingInterval: form.billingInterval.trim() || 'student/month',
+      minSeats: parsePositiveInt(form.minSeats, 'Minimum seats'),
+      discountPercent: form.discountPercent.trim() ? parseDiscount(form.discountPercent) : null,
+      discountLabel: form.discountLabel.trim() || null,
+      features: featuresFromText(form.features),
+      isFeatured: form.isFeatured,
+    };
+    return payload;
+  };
+
+  const newFormToPayload = () => {
+    const payload = {
+      name: newPlanForm.name.trim(),
+      description: newPlanForm.description.trim() || null,
+      currency: newPlanForm.currency.trim().toUpperCase() || 'NGN',
+      seatPrice: parsePositiveInt(newPlanForm.seatPrice, 'Seat price'),
+      billingInterval: newPlanForm.billingInterval.trim() || 'student/month',
+      minSeats: parsePositiveInt(newPlanForm.minSeats, 'Minimum seats'),
+      discountPercent: newPlanForm.discountPercent.trim() ? parseDiscount(newPlanForm.discountPercent) : null,
+      discountLabel: newPlanForm.discountLabel.trim() || null,
+      features: featuresFromText(newPlanForm.features),
+      isFeatured: newPlanForm.isFeatured,
+    };
+    if (!payload.name) {
+      throw new Error('Plan name is required');
+    }
+    return payload;
+  };
+
+  const loadPlans = useCallback(async () => {
+    if (!token || !isSuperadmin) return;
+    setPlansLoading(true);
+    setPlansError(null);
+    try {
+      const list = await fetchPlatformPlans();
+      setPlans(list);
+      setPlanForms(
+        list.reduce<Record<string, ReturnType<typeof planToForm>>>((acc, plan) => {
+          acc[plan.slug] = planToForm(plan);
+          return acc;
+        }, {}),
+      );
+    } catch (err) {
+      setPlansError(err instanceof Error ? err.message : 'Unable to load plans');
+    } finally {
+      setPlansLoading(false);
+    }
+  }, [fetchPlatformPlans, planToForm, isSuperadmin, token]);
+
+  useEffect(() => {
+    void loadPlans();
+  }, [loadPlans]);
+
+  const handlePlanFormChange = (slug: string, field: keyof (typeof planForms)[string], value: string | boolean) => {
+    setPlanForms((prev) => {
+      const next = {
+        ...prev,
+        [slug]: {
+          ...prev[slug],
+          [field]: typeof value === 'string' ? value : value,
+        },
+      };
+      return next;
+    });
+  };
+
+  const handlePlanSave = async (slug: string) => {
+    if (!token) return;
+    const form = planForms[slug];
+    if (!form) return;
+    try {
+      setPlanSavingSlug(slug);
+      setPlanActionMessage(null);
+      const payload = formToPayload(form);
+      const updated = await updatePlatformPlanClient(token, slug, payload);
+      setPlans((prev) => prev.map((plan) => (plan.slug === slug ? updated : plan)));
+      setPlanForms((prev) => ({ ...prev, [updated.slug]: planToForm(updated) }));
+      setPlanActionMessage('Plan updated successfully.');
+    } catch (err) {
+      setPlanActionMessage(err instanceof Error ? err.message : 'Unable to update plan.');
+    } finally {
+      setPlanSavingSlug(null);
+    }
+  };
+
+  const handlePlanDelete = async (slug: string) => {
+    if (!token) return;
+    const confirmed = window.confirm('Delete this plan? This cannot be undone.');
+    if (!confirmed) return;
+    try {
+      setPlanDeletingSlug(slug);
+      setPlanActionMessage(null);
+      await deletePlatformPlanClient(token, slug);
+      setPlans((prev) => prev.filter((plan) => plan.slug !== slug));
+      setPlanForms((prev) => {
+        const next = { ...prev };
+        delete next[slug];
+        return next;
+      });
+      setPlanActionMessage('Plan deleted.');
+    } catch (err) {
+      setPlanActionMessage(err instanceof Error ? err.message : 'Unable to delete plan.');
+    } finally {
+      setPlanDeletingSlug(null);
+    }
+  };
+
+  const handleNewPlanChange = (field: keyof typeof newPlanForm, value: string | boolean) => {
+    setNewPlanForm((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
+  };
+
+  const handleCreatePlan = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!token) return;
+    try {
+      setCreatingPlan(true);
+      setPlanActionMessage(null);
+      const payload = newFormToPayload();
+      const created = await createPlatformPlanClient(token, payload);
+      setPlans((prev) => [created, ...prev]);
+      setPlanForms((prev) => ({ ...prev, [created.slug]: planToForm(created) }));
+      setNewPlanForm({
+        name: '',
+        description: '',
+        currency: 'NGN',
+        seatPrice: '',
+        billingInterval: 'student/month',
+        minSeats: '',
+        discountPercent: '',
+        discountLabel: '',
+        features: '',
+        isFeatured: false,
+      });
+      setPlanActionMessage('Plan created successfully.');
+    } catch (err) {
+      setPlanActionMessage(err instanceof Error ? err.message : 'Unable to create plan.');
+    } finally {
+      setCreatingPlan(false);
+    }
+  };
 
   const buildResetKey = (tenantId: string, userId: string) => `${tenantId}:${userId}`;
 
@@ -568,6 +800,225 @@ export default function SettingsPage() {
               </div>
             );
           })}
+        </div>
+      </div>
+
+      <div className="glass-card" style={{ padding: '1.5rem', display: 'grid', gap: '1.25rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+          <div>
+            <p style={{ margin: 0, fontWeight: 600 }}>Pricing & plans</p>
+            <p className="text-muted" style={{ margin: 0 }}>
+              Edit seat pricing, discounts, and feature bundles shown on the public site.
+            </p>
+          </div>
+          <div style={{ flexGrow: 1 }} />
+          <button
+            className="pill"
+            type="button"
+            style={{ cursor: 'pointer' }}
+            onClick={() => {
+              setPlansError(null);
+              setPlanActionMessage(null);
+              void loadPlans();
+            }}
+          >
+            Refresh plans
+          </button>
+          {plansLoading && <span className="text-muted">Loading…</span>}
+        </div>
+
+        {planActionMessage && (
+          <p className="text-muted" style={{ margin: 0 }}>
+            {planActionMessage}
+          </p>
+        )}
+        {plansError && (
+          <p className="form-error" style={{ margin: 0 }}>
+            {plansError}
+          </p>
+        )}
+
+        <form onSubmit={handleCreatePlan} style={{ display: 'grid', gap: '0.75rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
+            <strong>Create new plan</strong>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 }}>
+              <input
+                type="checkbox"
+                checked={newPlanForm.isFeatured}
+                onChange={(event) => handleNewPlanChange('isFeatured', event.target.checked)}
+              />
+              Featured
+            </label>
+          </div>
+          <div style={{ display: 'grid', gap: '0.75rem', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))' }}>
+            <input
+              className="input-field"
+              placeholder="Plan name"
+              value={newPlanForm.name}
+              onChange={(event) => handleNewPlanChange('name', event.target.value)}
+            />
+            <input
+              className="input-field"
+              placeholder="Currency"
+              value={newPlanForm.currency}
+              onChange={(event) => handleNewPlanChange('currency', event.target.value)}
+            />
+            <input
+              className="input-field"
+              placeholder="Seat price"
+              value={newPlanForm.seatPrice}
+              onChange={(event) => handleNewPlanChange('seatPrice', event.target.value)}
+            />
+            <input
+              className="input-field"
+              placeholder="Billing interval"
+              value={newPlanForm.billingInterval}
+              onChange={(event) => handleNewPlanChange('billingInterval', event.target.value)}
+            />
+            <input
+              className="input-field"
+              placeholder="Minimum seats"
+              value={newPlanForm.minSeats}
+              onChange={(event) => handleNewPlanChange('minSeats', event.target.value)}
+            />
+            <input
+              className="input-field"
+              placeholder="Discount %"
+              value={newPlanForm.discountPercent}
+              onChange={(event) => handleNewPlanChange('discountPercent', event.target.value)}
+            />
+            <input
+              className="input-field"
+              placeholder="Discount label"
+              value={newPlanForm.discountLabel}
+              onChange={(event) => handleNewPlanChange('discountLabel', event.target.value)}
+            />
+          </div>
+          <textarea
+            className="input-field"
+            placeholder="Short description"
+            value={newPlanForm.description}
+            onChange={(event) => handleNewPlanChange('description', event.target.value)}
+            rows={2}
+          />
+          <textarea
+            className="input-field"
+            placeholder="Features (one per line)"
+            value={newPlanForm.features}
+            onChange={(event) => handleNewPlanChange('features', event.target.value)}
+            rows={3}
+          />
+          <button className="gradient-button" type="submit" disabled={creatingPlan}>
+            {creatingPlan ? 'Creating plan…' : 'Add plan'}
+          </button>
+        </form>
+
+        <div style={{ display: 'grid', gap: '0.75rem' }}>
+          {plans.map((plan) => {
+            const form = planForms[plan.slug] ?? planToForm(plan);
+            return (
+              <div
+                key={plan.slug}
+                className="glass-card"
+                style={{ padding: '1.25rem', border: '1px solid rgba(255,255,255,0.08)', display: 'grid', gap: '0.9rem' }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', flexWrap: 'wrap' }}>
+                  <strong style={{ fontSize: '1.1rem' }}>{plan.name}</strong>
+                  <span className="pill">Slug: {plan.slug}</span>
+                  {plan.isFeatured && <span className="pill">Featured</span>}
+                </div>
+                <div style={{ display: 'grid', gap: '0.75rem', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))' }}>
+                  <input
+                    className="input-field"
+                    value={form.name}
+                    onChange={(event) => handlePlanFormChange(plan.slug, 'name', event.target.value)}
+                    placeholder="Plan name"
+                  />
+                  <input
+                    className="input-field"
+                    value={form.currency}
+                    onChange={(event) => handlePlanFormChange(plan.slug, 'currency', event.target.value)}
+                    placeholder="Currency"
+                  />
+                  <input
+                    className="input-field"
+                    value={form.seatPrice}
+                    onChange={(event) => handlePlanFormChange(plan.slug, 'seatPrice', event.target.value)}
+                    placeholder="Seat price"
+                  />
+                  <input
+                    className="input-field"
+                    value={form.billingInterval}
+                    onChange={(event) => handlePlanFormChange(plan.slug, 'billingInterval', event.target.value)}
+                    placeholder="Billing interval"
+                  />
+                  <input
+                    className="input-field"
+                    value={form.minSeats}
+                    onChange={(event) => handlePlanFormChange(plan.slug, 'minSeats', event.target.value)}
+                    placeholder="Minimum seats"
+                  />
+                  <input
+                    className="input-field"
+                    value={form.discountPercent}
+                    onChange={(event) => handlePlanFormChange(plan.slug, 'discountPercent', event.target.value)}
+                    placeholder="Discount %"
+                  />
+                  <input
+                    className="input-field"
+                    value={form.discountLabel}
+                    onChange={(event) => handlePlanFormChange(plan.slug, 'discountLabel', event.target.value)}
+                    placeholder="Discount label"
+                  />
+                </div>
+                <textarea
+                  className="input-field"
+                  value={form.description}
+                  onChange={(event) => handlePlanFormChange(plan.slug, 'description', event.target.value)}
+                  rows={2}
+                />
+                <textarea
+                  className="input-field"
+                  value={form.features}
+                  onChange={(event) => handlePlanFormChange(plan.slug, 'features', event.target.value)}
+                  rows={3}
+                  placeholder="Features (one per line)"
+                />
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14 }}>
+                  <input
+                    type="checkbox"
+                    checked={form.isFeatured}
+                    onChange={(event) => handlePlanFormChange(plan.slug, 'isFeatured', event.target.checked)}
+                  />
+                  Featured plan
+                </label>
+                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                  <button
+                    className="gradient-button"
+                    type="button"
+                    onClick={() => handlePlanSave(plan.slug)}
+                    disabled={planSavingSlug === plan.slug}
+                  >
+                    {planSavingSlug === plan.slug ? 'Saving…' : 'Save changes'}
+                  </button>
+                  <button
+                    className="pill"
+                    type="button"
+                    style={{ cursor: 'pointer', borderColor: 'rgba(248,113,113,0.45)', color: '#fecaca' }}
+                    onClick={() => handlePlanDelete(plan.slug)}
+                    disabled={planDeletingSlug === plan.slug}
+                  >
+                    {planDeletingSlug === plan.slug ? 'Removing…' : 'Delete'}
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+          {plans.length === 0 && !plansLoading && (
+            <p className="text-muted" style={{ margin: 0 }}>
+              No pricing plans yet. Create one above to get started.
+            </p>
+          )}
         </div>
       </div>
     </section>
