@@ -35,6 +35,9 @@ export default function SettingsPage() {
   const [adminState, setAdminState] = useState<Record<string, AdminState>>({});
   const [adminForms, setAdminForms] = useState<Record<string, { email: string; password: string }>>({});
   const [adminActionMessage, setAdminActionMessage] = useState<string | null>(null);
+  const [adminResetControls, setAdminResetControls] = useState<
+    Record<string, { open: boolean; value: string; busy: boolean }>
+  >({});
 
   const isSuperadmin = useMemo(() => context?.systemRoles?.includes('SUPERADMIN') ?? false, [context?.systemRoles]);
 
@@ -100,6 +103,27 @@ export default function SettingsPage() {
       void loadTenantAdmins(expandedTenantId);
     }
   }, [adminState, expandedTenantId, loadTenantAdmins]);
+
+  const buildResetKey = (tenantId: string, userId: string) => `${tenantId}:${userId}`;
+
+  const toggleResetPanel = (tenantId: string, userId: string) => {
+    const key = buildResetKey(tenantId, userId);
+    setAdminResetControls((prev) => {
+      const current = prev[key];
+      const nextState = current?.open
+        ? { open: false, value: '', busy: false }
+        : { open: true, value: current?.value ?? '', busy: false };
+      return { ...prev, [key]: nextState };
+    });
+  };
+
+  const handleResetInputChange = (tenantId: string, userId: string, value: string) => {
+    const key = buildResetKey(tenantId, userId);
+    setAdminResetControls((prev) => ({
+      ...prev,
+      [key]: { open: true, value, busy: prev[key]?.busy ?? false },
+    }));
+  };
 
   const handleCreateTenant = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -174,15 +198,35 @@ export default function SettingsPage() {
   };
 
   const handleResetPassword = async (tenantId: string, userId: string) => {
-    if (!token) return;
-    const password = window.prompt('Enter a new password for this admin');
-    if (!password) return;
+    if (!token) {
+      setAdminActionMessage('Please sign in again to reset passwords.');
+      return;
+    }
+    const key = buildResetKey(tenantId, userId);
+    const entry = adminResetControls[key];
+    const password = entry?.value.trim();
+    if (!entry || !password) {
+      setAdminActionMessage('Enter a temporary password before resetting.');
+      return;
+    }
     setAdminActionMessage(null);
+    setAdminResetControls((prev) => ({
+      ...prev,
+      [key]: { ...entry, busy: true },
+    }));
     try {
       await resetTenantAdminPassword(token, tenantId, userId, password);
       setAdminActionMessage('Password reset successfully.');
+      setAdminResetControls((prev) => ({
+        ...prev,
+        [key]: { open: false, value: '', busy: false },
+      }));
     } catch (err) {
       setAdminActionMessage(err instanceof Error ? err.message : 'Unable to reset password.');
+      setAdminResetControls((prev) => ({
+        ...prev,
+        [key]: { ...entry, busy: false },
+      }));
     }
   };
 
@@ -436,43 +480,87 @@ export default function SettingsPage() {
                         </p>
                       )}
                       <div style={{ display: 'grid', gap: '0.5rem' }}>
-                        {admins.map((admin) => (
-                          <div
-                            key={admin.userId}
-                            style={{
-                              display: 'flex',
-                              flexWrap: 'wrap',
-                              gap: '0.5rem',
-                              alignItems: 'center',
-                              padding: '0.75rem',
-                              borderRadius: 12,
-                              border: '1px solid rgba(255,255,255,0.08)',
-                            }}
-                          >
-                            <div style={{ flex: 1, minWidth: 220 }}>
-                              <p style={{ margin: 0, fontWeight: 600 }}>{admin.email}</p>
-                              <p className="text-muted" style={{ margin: 0 }}>
-                                Role: {admin.role} · Added {new Date(admin.createdAt).toLocaleString()}
-                              </p>
+                        {admins.map((admin) => {
+                          const resetKey = buildResetKey(tenant.id, admin.userId);
+                          const resetControl = adminResetControls[resetKey] ?? { open: false, value: '', busy: false };
+                          const isResetOpen = resetControl.open;
+
+                          return (
+                            <div
+                              key={admin.userId}
+                              style={{
+                                display: 'grid',
+                                gap: '0.6rem',
+                                padding: '0.85rem',
+                                borderRadius: 12,
+                                border: '1px solid rgba(255,255,255,0.08)',
+                              }}
+                            >
+                              <div
+                                style={{
+                                  display: 'flex',
+                                  flexWrap: 'wrap',
+                                  gap: '0.5rem',
+                                  alignItems: 'center',
+                                }}
+                              >
+                                <div style={{ flex: 1, minWidth: 220 }}>
+                                  <p style={{ margin: 0, fontWeight: 600 }}>{admin.email}</p>
+                                  <p className="text-muted" style={{ margin: 0 }}>
+                                    Role: {admin.role} · Added {new Date(admin.createdAt).toLocaleString()}
+                                  </p>
+                                </div>
+
+                                <button
+                                  className="pill"
+                                  type="button"
+                                  style={{ cursor: 'pointer' }}
+                                  onClick={() => toggleResetPanel(tenant.id, admin.userId)}
+                                >
+                                  {isResetOpen ? 'Close reset' : 'Reset password'}
+                                </button>
+                                <button
+                                  className="pill"
+                                  type="button"
+                                  style={{ cursor: 'pointer', borderColor: 'rgba(248,113,113,0.4)', color: '#fecaca' }}
+                                  onClick={() => handleRemoveAdmin(tenant.id, admin.userId)}
+                                >
+                                  Remove
+                                </button>
+                              </div>
+
+                              {isResetOpen && (
+                                <div
+                                  style={{
+                                    display: 'flex',
+                                    flexWrap: 'wrap',
+                                    gap: '0.5rem',
+                                    alignItems: 'center',
+                                  }}
+                                >
+                                  <input
+                                    className="input-field"
+                                    type="password"
+                                    placeholder="Temporary password"
+                                    value={resetControl.value}
+                                    onChange={(event) =>
+                                      handleResetInputChange(tenant.id, admin.userId, event.target.value)
+                                    }
+                                    style={{ flex: 1, minWidth: 220 }}
+                                  />
+                                  <button
+                                    className="gradient-button"
+                                    type="button"
+                                    disabled={resetControl.busy}
+                                    onClick={() => handleResetPassword(tenant.id, admin.userId)}
+                                  >
+                                    {resetControl.busy ? 'Resetting…' : 'Confirm reset'}
+                                  </button>
+                                </div>
+                              )}
                             </div>
-                            <button
-                              className="pill"
-                              type="button"
-                              style={{ cursor: 'pointer' }}
-                              onClick={() => handleResetPassword(tenant.id, admin.userId)}
-                            >
-                              Reset password
-                            </button>
-                            <button
-                              className="pill"
-                              type="button"
-                              style={{ cursor: 'pointer', borderColor: 'rgba(248,113,113,0.4)', color: '#fecaca' }}
-                              onClick={() => handleRemoveAdmin(tenant.id, admin.userId)}
-                            >
-                              Remove
-                            </button>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     </div>
                   </div>
